@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: NexRailAI
+  config:
+    import: classpath:sensitive.yml
+  # File upload configuration
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 1MB
+  # Database configuration
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/NexRailAI
+    username: ${DB_USER_NAME}
+    password: ${DB_USER_PASSWORD}
+  # Redis configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  # JPA configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  # AI configuration
+  ai:
+    # Google GenAI Gemini
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            model: gemini-2.5-flash
+            temperature: 0.4
+
+# Server configuration
+server:
+  port: 8089
+  servlet:
+    context-path: /nex-rail-ai
+
+# Logging configuration
+logging:
+  level.com.next.nexrailai: DEBUG
+
+# TDX
+tdx:
+  client-id: ${TDX_CLIENT_ID}
+  client-secret: ${TDX_CLIENT_SECRET}
+
+
