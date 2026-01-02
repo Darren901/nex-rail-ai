@@ -1,6 +1,6 @@
 package com.next.nexrailai.controller;
 
-import com.next.nexrailai.dto.ThsrTimetableDTO;
+import com.next.nexrailai.dto.ThsrSummaryDTO;
 import com.next.nexrailai.service.ThsrTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,12 +17,12 @@ public class TestController {
 
     private final ThsrTicketService thstTicketService;
 
-    @GetMapping("/search")
-    public List<ThsrTimetableDTO> testSearch(
-            @RequestParam String from,
-            @RequestParam String to,
-            @RequestParam String date,
-            @RequestParam(required = false) String time) {
-        return thstTicketService.searchTickets(from, to, date, time);
-    }
+//    @GetMapping("/search")
+//    public List<ThsrSummaryDTO> testSearch(
+//            @RequestParam String from,
+//            @RequestParam String to,
+//            @RequestParam String date,
+//            @RequestParam(required = false) String time) {
+//        return thstTicketService.searchTickets(from, to, date, time);
+//    }
 }

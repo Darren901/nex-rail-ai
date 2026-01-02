@@ -2,9 +2,11 @@ package com.next.nexrailai.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -77,6 +79,61 @@ public class JsonUtil {
 			return objectMapper.readValue(json, typeRef);
 		} catch (JsonProcessingException e) {
 			log.error("Failed to parse JSON: " + e.getMessage());
+			return null;
+		}
+	}
+
+//	/**
+//	 * 將 Json 字串轉回 Java 物件 (適用於Spring Boot 的泛型物件)
+//	 *
+//	 * @param json    需解析的 JSON 字串
+//	 * @param typeRef ParameterizedTypeReference 實例，攜帶完整的泛型資訊
+//	 **/
+//	public static <T> T fromJson(
+//			String json,
+//			ParameterizedTypeReference<T> typeRef
+//	) {
+//		try {
+//			JavaType javaType = objectMapper
+//					.getTypeFactory()
+//					.constructType(typeRef.getType());
+//
+//			return objectMapper.readValue(json, javaType);
+//		} catch (JsonProcessingException e) {
+//			log.error("Failed to parse JSON: {}", e.getMessage(), e);
+//			return null;
+//		}
+//	}
+
+	public static <T> T fromJson(
+			String json,
+			ParameterizedTypeReference<T> typeRef
+	) {
+		log.debug(">>> [JsonUtil] fromJson 開始");
+		log.debug(">>> [JsonUtil] JSON is null: {}", json == null);
+		log.debug(">>> [JsonUtil] typeRef: {}", typeRef.getType());
+
+		try {
+			log.debug(">>> [JsonUtil] 準備構造 JavaType");
+			JavaType javaType = objectMapper
+					.getTypeFactory()
+					.constructType(typeRef.getType());
+
+			log.debug(">>> [JsonUtil] JavaType 構造完成: {}", javaType);
+			log.debug(">>> [JsonUtil] 準備呼叫 objectMapper.readValue");
+
+			T result = objectMapper.readValue(json, javaType);
+
+			log.debug(">>> [JsonUtil] readValue 完成，result is null: {}", result == null);
+			return result;
+
+		} catch (JsonProcessingException e) {
+			log.error(">>> [JsonUtil ERROR] JsonProcessingException: {}", e.getMessage());
+			log.error(">>> [JsonUtil ERROR] 完整 stack trace:", e);
+			return null;
+		} catch (Exception e) {
+			log.error(">>> [JsonUtil ERROR] 未預期的異常: {}", e.getMessage());
+			log.error(">>> [JsonUtil ERROR] 完整 stack trace:", e);
 			return null;
 		}
 	}

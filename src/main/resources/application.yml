@@ -2,7 +2,9 @@ spring:
   application:
     name: NexRailAI
   config:
-    import: classpath:sensitive.yml
+    import:
+      - classpath:sensitive.yml
+      - classpath:application-prompts.yml
   # File upload configuration
   servlet:
     multipart:
