@@ -124,12 +124,10 @@ public class ThsrTicketService {
         if (request.ticketType() != null || request.fareClass() != null) {
             List<ThsrFareDTO> tdxFares = tdxService.getFares(fromId, toId);
 
-            Integer targetTicketType = TICKET_TYPE_MAP.getOrDefault(request.ticketType(), 1);
             Integer targetFareClass = FARE_CLASS_MAP.getOrDefault(request.fareClass(), 1);
 
             fares = tdxFares.stream()
                     .flatMap(fareDTO -> fareDTO.fares().stream())
-                    // 更新票價篩選邏輯: 移除對 ticketType 的檢查，只檢查 fareClass
                     .filter(fare -> fare.fareClass().equals(targetFareClass))
                     .filter(fare -> request.cabinClass() == null || CABIN_CLASS_MAP.get(request.cabinClass()).equals(fare.cabinClass()))
                     .map(fare -> {

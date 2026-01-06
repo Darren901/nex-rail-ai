@@ -39,13 +39,10 @@ spring:
     chat:
       client:
         observations:
-          log-prompt: true
           log-completion: true
 # Server configuration
 server:
   port: 8089
-  servlet:
-    context-path: /nex-rail-ai
 
 # Logging configuration
 logging:
@@ -56,4 +53,11 @@ tdx:
   client-id: ${TDX_CLIENT_ID}
   client-secret: ${TDX_CLIENT_SECRET}
 
+# Line Bot
+line:
+  bot:
+    channel-token: ${LINE_BOT_TOKEN}
+    channel-secret: ${LINE_BOT_SECRET}
+    handler:
+      path: /callback
 

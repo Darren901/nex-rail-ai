@@ -27,4 +27,19 @@ public class Constant {
         }
 
     }
+
+    @Getter
+    public enum USER_STATUS{
+        ENABLE  ("1", "啟用"),
+        DISABLE ("0", "停用")
+        ;
+
+        private final String code;
+        private final String message;
+
+        USER_STATUS(String code, String message) {
+            this.code = code;
+            this.message = message;
+        }
+    }
 }

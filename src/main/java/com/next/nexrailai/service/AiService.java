@@ -1,5 +1,6 @@
 package com.next.nexrailai.service;
 
+import com.next.nexrailai.component.ThsrFunctionTools;
 import com.next.nexrailai.config.PromptConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,9 @@ public class AiService {
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
                 .toolCallbacks(
                         thsrFunctionTools.thsrJourneySearch(),
-                        thsrFunctionTools.bookTicket()
+                        thsrFunctionTools.bookTicket(),
+                        thsrFunctionTools.saveUserMemory(chatId),
+                        thsrFunctionTools.recallUserMemory(chatId)
                 )
                 .call()
                 .content();

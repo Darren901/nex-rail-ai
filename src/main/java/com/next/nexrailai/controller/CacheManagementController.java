@@ -18,6 +18,22 @@ public class CacheManagementController {
 
     private final StringRedisTemplate redisTemplate;
 
+    @DeleteMapping("/token")
+    public ResponseEntity<String> clearAccessTokenCache() {
+        try {
+            Set<String> keys = redisTemplate.keys("tdx:access_token");
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+                log.info("已清除" + keys.size() + " 個 accessToken");
+                return ResponseEntity.ok("已清除 " + keys.size() + " 個 accessToken");
+            }
+            return ResponseEntity.ok("沒有 accessToken cache 需要清除");
+        } catch (Exception e) {
+            log.error("清除 accessToken cache 失敗", e);
+            return ResponseEntity.status(500).body("清除失敗: " + e.getMessage());
+        }
+    }
+
     // 清除所有時刻表 cache (高鐵改點時使用)
     @DeleteMapping("/timetable")
     public ResponseEntity<String> clearTimetableCache() {
