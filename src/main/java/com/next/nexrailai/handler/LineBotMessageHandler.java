@@ -1,10 +1,7 @@
 package com.next.nexrailai.handler;
 
 import com.linecorp.bot.messaging.client.MessagingApiClient;
-import com.linecorp.bot.messaging.model.ReplyMessageRequest;
-import com.linecorp.bot.messaging.model.ShowLoadingAnimationRequest;
-import com.linecorp.bot.messaging.model.TextMessage;
-import com.linecorp.bot.messaging.model.UserProfileResponse;
+import com.linecorp.bot.messaging.model.*;
 import com.linecorp.bot.spring.boot.handler.annotation.EventMapping;
 import com.linecorp.bot.spring.boot.handler.annotation.LineMessageHandler;
 import com.linecorp.bot.webhook.model.*;
@@ -43,7 +40,6 @@ public class LineBotMessageHandler {
         } catch (Exception e) {
             log.warn("Loading 動畫顯示失敗: {}", e.getMessage());
         }
-
         // 2. Call AI
         String replyMessage = aiService.chat(userId, originalMessageText);
         // 3. 回覆訊息
