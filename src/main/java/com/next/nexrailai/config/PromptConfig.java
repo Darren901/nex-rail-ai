@@ -15,4 +15,5 @@ public class PromptConfig {
 
     private Map<String, String> system;
     private Map<String, String> journeySearch;
+    private Map<String, String> bookTicket;
 }

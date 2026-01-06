@@ -15,7 +15,6 @@ import java.time.LocalDate;
 public class AiService {
 
     private final ChatClient chatClient;
-    private final ThsrTicketService thsrTicketService;
     private final PromptConfig promptConfig;
     private final ThsrFunctionTools thsrFunctionTools;
 
@@ -25,7 +24,10 @@ public class AiService {
                         .param("today", LocalDate.now().toString()))
                 .user(message)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
-                .toolCallbacks(thsrFunctionTools.thsrJourneySearch(thsrTicketService))
+                .toolCallbacks(
+                        thsrFunctionTools.thsrJourneySearch(),
+                        thsrFunctionTools.bookTicket()
+                )
                 .call()
                 .content();
     }

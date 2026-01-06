@@ -36,7 +36,11 @@ spring:
           options:
             model: gemini-2.5-flash
             temperature: 0.4
-
+    chat:
+      client:
+        observations:
+          log-prompt: true
+          log-completion: true
 # Server configuration
 server:
   port: 8089

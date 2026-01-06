@@ -3,11 +3,7 @@ package com.next.nexrailai.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.common.Constant;
-import com.next.nexrailai.dto.TdxTokenResponse;
-import com.next.nexrailai.dto.ThsrFareDTO;
-import com.next.nexrailai.dto.ThsrOdAvailableSeatDTO;
-import com.next.nexrailai.dto.ThsrStationDTO;
-import com.next.nexrailai.dto.ThsrTimetableDTO;
+import com.next.nexrailai.dto.*;
 import com.next.nexrailai.jpa.entity.Station;
 import com.next.nexrailai.jpa.repository.StationRepository;
 import com.next.nexrailai.utils.JsonUtil;
@@ -181,117 +177,92 @@ public class TdxService {
         }
     }
 
-//    public List<ThsrFareDTO> getFares(String originStationID, String destinationStationID) {
-//        String redisKey = "tdx:fares:" + originStationID + ":" + destinationStationID;
-//        log.info(">>>> [TDX 查詢] 查詢票價 (Redis Key: {}): {} -> {}", redisKey, originStationID, destinationStationID);
-//
-//        // 1. 嘗試從 Redis 讀取快取
-//        try {
-//            String cachedFaresJson = redisTemplate.opsForValue().get(redisKey);
-//            if (cachedFaresJson != null) {
-//                log.info(">>>> [TDX 查詢] 票價快取命中！從 Redis 讀取。");
-//                return JsonUtil.fromJson(cachedFaresJson, new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
-//            }
-//        } catch (Exception e) {
-//            log.error(">>>> [Redis] 讀取票價快取失敗", e);
-//        }
-//
-//        log.warn(">>>> [TDX 查詢] 票價快取未命中，準備呼叫 TDX API...");
-//
-//        // 2. 快取未命中，呼叫 TDX API
-//        String url = String.format(
-//                "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/ODFare/%s/to/%s?$format=JSON",
-//                originStationID, destinationStationID
-//        );
-//
-//        try {
-//            List<ThsrFareDTO> fares = restClient.get()
-//                    .uri(url)
-//                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
-//                    .retrieve()
-//                    .body(new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
-//
-//            log.debug(">>>>> [TDX Fares Result]: {}", JsonUtil.prettyJson(fares));
-//
-//            if (fares != null && !fares.isEmpty()) {
-//                // 3. 成功獲取後，寫入 Redis 快取，設定 24 小時過期
-//                try {
-//                    String jsonToCache = JsonUtil.toJson(fares);
-//                    redisTemplate.opsForValue().set(redisKey, jsonToCache, Duration.ofHours(24));
-//                    log.info(">>>> [TDX 查詢] 已將票價結果寫入 Redis 快取。");
-//                } catch (Exception e) {
-//                    log.error(">>>> [Redis] 寫入票價快取失敗", e);
-//                }
-//                return fares;
-//            }
-//            return List.of();
-//        } catch (Exception e) {
-//            log.error(">>>> [TDX 查詢] 查詢票價失敗: {}", e.getMessage());
-//            return List.of();
-//        }
-//    }
-
     public List<ThsrFareDTO> getFares(String originStationID, String destinationStationID) {
         String redisKey = "tdx:fares:" + originStationID + ":" + destinationStationID;
-        log.info(">>> [START] getFares: {} -> {}", originStationID, destinationStationID);
+        log.info(">>>> [TDX 查詢] 查詢票價 (Redis Key: {}): {} -> {}", redisKey, originStationID, destinationStationID);
 
         // 1. 嘗試從 Redis 讀取快取
         try {
-            log.debug(">>> [STEP 1] 準備從 Redis 讀取");
             String cachedFaresJson = redisTemplate.opsForValue().get(redisKey);
-
             if (cachedFaresJson != null) {
-                log.info(">>> [STEP 2] Redis 快取命中，JSON 長度: {}", cachedFaresJson.length());
-                log.debug(">>> [STEP 2.1] JSON 內容前 200 字元: {}", cachedFaresJson.substring(0, Math.min(200, cachedFaresJson.length())));
-
-                log.debug(">>> [STEP 3] 準備呼叫 JsonUtil.fromJson");
-                List<ThsrFareDTO> result = JsonUtil.fromJson(cachedFaresJson, new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
-
-                log.info(">>> [STEP 4] JsonUtil.fromJson 完成，result is null: {}", result == null);
-
-                if (result != null) {
-                    log.info(">>> [STEP 5] 清洗從 Redis 還原的 List..."); // 新增 Log
-                    return new java.util.ArrayList<>(result); // <--- 核心解決方案
-                }
-            } else {
-                log.debug(">>> [STEP 2] Redis 快取未命中");
+                log.info(">>>> [TDX 查詢] 票價快取命中！從 Redis 讀取。");
+                return JsonUtil.fromJson(cachedFaresJson, new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
             }
         } catch (Exception e) {
-            log.error(">>> [ERROR] Redis 讀取或解析失敗，錯誤位置: {}", e.getStackTrace()[0], e);
+            log.error(">>>> [Redis] 讀取票價快取失敗", e);
         }
 
-        log.info(">>> [STEP 6] 準備呼叫 TDX API");
+        log.warn(">>>> [TDX 查詢] 票價快取未命中，準備呼叫 TDX API...");
 
+        // 2. 快取未命中，呼叫 TDX API
         String url = String.format(
                 "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/ODFare/%s/to/%s?$format=JSON",
                 originStationID, destinationStationID
         );
 
         try {
-            log.debug(">>> [STEP 7] 呼叫 API: {}", url);
             List<ThsrFareDTO> fares = restClient.get()
                     .uri(url)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
 
-            log.info(">>> [STEP 8] API 返回，fares is null: {}", fares == null);
+            log.debug(">>>>> [TDX Fares Result]: {}", JsonUtil.prettyJson(fares));
 
             if (fares != null && !fares.isEmpty()) {
+                // 3. 成功獲取後，寫入 Redis 快取，設定 24 小時過期
                 try {
-                    log.debug(">>> [STEP 9] 準備寫入 Redis");
                     String jsonToCache = JsonUtil.toJson(fares);
                     redisTemplate.opsForValue().set(redisKey, jsonToCache, Duration.ofHours(24));
-                    log.info(">>> [STEP 10] Redis 寫入成功");
+                    log.info(">>>> [TDX 查詢] 已將票價結果寫入 Redis 快取。");
                 } catch (Exception e) {
-                    log.error(">>> [ERROR] Redis 寫入失敗", e);
+                    log.error(">>>> [Redis] 寫入票價快取失敗", e);
                 }
                 return fares;
             }
             return List.of();
         } catch (Exception e) {
-            log.error(">>> [ERROR] TDX API 呼叫失敗", e);
+            log.error(">>>> [TDX 查詢] 查詢票價失敗: {}", e.getMessage());
             return List.of();
+        }
+    }
+
+
+    /**
+     * 呼叫 TDX MAAS API 取得高鐵訂票 DeepLink
+     *
+     * @param fromStationName 起點車站名稱
+     * @param toStationName   終點車站名稱
+     * @param trainDate       乘車日期 (YYYY-MM-DD)
+     * @param trainTime       乘車時間 (HH:mm)
+     * @param trainNumber     車次號碼
+     * @return 訂票 DeepLink URL，若失敗則回傳 null
+     */
+    public String getMaasDeepLink(String fromStationName, String toStationName, String trainDate, String trainTime, String trainNumber) {
+        log.info(">>>> [TDX MAAS] 查詢訂票 DeepLink: {} -> {} 日期: {} 時間: {} 車次: {}", fromStationName, toStationName, trainDate, trainTime, trainNumber);
+
+        String url = String.format(
+                "https://tdx.transportdata.tw/api/maas-thsr/booking/deeplink/direct/hsr?start_station=%s&end_station=%s&train_date=%s&train_time=%s&train_number=%s",
+                fromStationName, toStationName, trainDate, trainTime, trainNumber
+        );
+
+        try {
+            MaasDeeplinkResponseDTO apiResponse = restClient.get()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<MaasDeeplinkResponseDTO>() {});
+
+            if (apiResponse != null && "success".equals(apiResponse.result()) && apiResponse.data() != null) {
+                log.info(">>>> [TDX MAAS] 成功取得 DeepLink: {}", apiResponse.data().deeplink());
+                return apiResponse.data().deeplink();
+            } else {
+                log.warn(">>>> [TDX MAAS] 取得 DeepLink 失敗或回應異常: {}", JsonUtil.prettyJson(apiResponse));
+                return null;
+            }
+        } catch (Exception e) {
+            log.error(">>>> [TDX MAAS] 查詢 DeepLink 發生錯誤: {}", e.getMessage(), e);
+            return null;
         }
     }
 

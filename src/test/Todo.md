@@ -13,8 +13,8 @@
 
 - [x]  **即時座位模組**：接 `/AvailableSeatStatusList`，過濾出該車次在特定車站的剩餘座位狀態。
 - [x]  **票價計算機**：接 `/Fare` API，支援「全票/大學生/早鳥」票價計算。
-- [ ]  **System Prompt 2.0**：Markdown 表格輸出優化。
-- [ ]  **DeepLink 導購連結**：封裝一個產出高鐵訂票 URL 的工具類。
+- [x]  **System Prompt 2.0**：Markdown 表格輸出優化。
+- [x]  **DeepLink 導購連結**：建立一個專用的訂票工具 (bookTicket)，僅在使用者明確要求訂票時呼叫，以產出高鐵訂票 URL。
 
 ### 第三階段：介面整合（下一站 🚉）
 

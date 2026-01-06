@@ -22,7 +22,7 @@ public record ThsrSummaryDTO(
                 timetable.destinationStopTime().arrivalTime(),
                 seat != null ? seat.getStandardStatusText() : "客滿或已過售票時間",
                 seat != null ? translate(seat.businessSeatStatus()) : "客滿或已過售票時間",
-                fares
+                fares != null ? fares : List.of() // ← 加這行,確保永遠不是 null
         );
     }
 
