@@ -19,8 +19,10 @@ import org.springframework.web.client.RestClient;
 public class AppConfig {
 
     @Bean
-    RestClient restClient() {
-        return RestClient.create();
+    RestClient restClient(@Value("${tdx.base-url}") String baseUrl) {
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .build();
     }
 
     @Bean
@@ -35,7 +37,7 @@ public class AppConfig {
     ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(10)
+                .maxMessages(20)
                 .build();
     }
 

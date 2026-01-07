@@ -14,6 +14,11 @@ import java.util.Map;
 public class PromptConfig {
 
     private Map<String, String> system;
-    private Map<String, String> journeySearch;
-    private Map<String, String> bookTicket;
+    private Map<String, ToolConfig> tools;
+
+    @Getter
+    @Setter
+    public static class ToolConfig{
+        private String text;
+    }
 }

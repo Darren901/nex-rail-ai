@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在跳轉...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #001f3f 0%, #0074D9 50%, #7FDBFF 100%);
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: bounce 1s infinite;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .manual-link {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .manual-link a {
+            color: white;
+            text-decoration: underline;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="icon">🚄</div>
+    <h1>正在為您開啟高鐵訂票網站...</h1>
+    <div class="spinner"></div>
+    <p>如果沒有自動跳轉，請點擊下方連結</p>
+
+    <div class="manual-link">
+        <a th:href="${targetUrl}" id="manualLink">點此手動開啟</a>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // 從後端取得目標網址
+    const targetUrl = /*[[${targetUrl}]]*/ '';
+
+    // 立即跳轉
+    if (targetUrl) {
+        // 延遲 500ms 讓使用者看到提示訊息
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 500);
+    }
+</script>
+</body>
+</html>

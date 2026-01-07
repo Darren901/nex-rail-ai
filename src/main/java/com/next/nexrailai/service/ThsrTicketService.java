@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.common.Constant;
 import com.next.nexrailai.dto.*;
+import com.next.nexrailai.dto.ai.BookingRequest;
+import com.next.nexrailai.dto.ai.SearchRequest;
 import com.next.nexrailai.jpa.entity.Station;
 import com.next.nexrailai.jpa.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,78 +26,13 @@ public class ThsrTicketService {
 
     private final StationRepository stationRepo;
     private final TdxService tdxService;
-
-    private static final Map<String, Integer> TICKET_TYPE_MAP = Map.of(
-            "單程票", 1,
-            "來回票", 2,
-            "早鳥票", 7,
-            "團體票", 8
+    
+    private static final Map<String, String> STATION_ALIAS_MAP = Map.of(
+            "高雄", "左營",
+            "臺北", "台北",
+            "臺中", "台中",
+            "臺南", "台南"
     );
-
-    private static final Map<String, Integer> FARE_CLASS_MAP = Map.of(
-            "成人", 1,
-            "學生", 2,
-            "孩童", 3,
-            "敬老", 4,
-            "愛心", 5,
-            "軍警", 8,
-            "法優", 9
-    );
-
-    private static final Map<String, Integer> CABIN_CLASS_MAP = Map.of(
-            "標準座", 1,
-            "商務座", 2,
-            "自由座", 3
-    );
-
-    /**
-     * 給 Gemini 看的參數描述，幫助它精確提取使用者對話中的資訊
-     */
-    public record SearchRequest(
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("起點車站名稱，例如：'板橋'、'台北'、'左營'。")
-            String from,
-
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("終點車站名稱，例如：'左營'、'台北'。")
-            String to,
-
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("查詢日期，格式必須為 YYYY-MM-DD。若使用者說『明天』，請計算出日期。")
-            String date,
-
-            @JsonPropertyDescription("出發時間之後，格式為 HH:mm。例如使用者說『下午兩點後』，請轉換為 '14:00'。若無指定則可不傳。")
-            String time,
-
-            @JsonPropertyDescription("票種，可選：'單程票', '早鳥票', '團體票'。若無指定，則代表使用者想查詢所有班次資訊，而非特定票價。")
-            String ticketType,
-
-            @JsonPropertyDescription("費率等級，可選：'成人', '學生', '孩童', '敬老', '愛心', '軍警', '法優'。若無指定，則代表使用者想查詢所有班次資訊，而非特定票價。")
-            String fareClass,
-
-            @JsonPropertyDescription("艙等，可選：'標準座', '商務座', '自由座'。若無指定，則代表使用者想查詢所有班次資訊，而非特定票價。")
-            String cabinClass
-    ){}
-
-    /**
-     * 給 Gemini 看的參數描述，幫助它精確提取使用者對話中的資訊
-     */
-    public record BookingRequest(
-            @JsonPropertyDescription("起點車站名稱。請務必回顧對話歷史，找出使用者最早查詢的出發站 (Origin)。")
-            String from,
-
-            @JsonPropertyDescription("終點車站名稱。請務必回顧對話歷史，找出使用者最早查詢的抵達站 (Destination)。")
-            String to,
-
-            @JsonPropertyDescription("乘車日期 (YYYY-MM-DD)。請從對話歷史中提取查詢日期。")
-            String trainDate,
-
-            @JsonPropertyDescription("該車次的原始出發時間 (HH:mm)。請從對話歷史的班次列表中查找該車次的時間。")
-            String trainTime,
-
-            @JsonPropertyDescription("要訂購的車次號碼，例如 '0837' 或 '1321'。")
-            String trainNumber
-    ) {}
 
     /**
      * 查詢高鐵班次與座位狀況
@@ -105,50 +42,59 @@ public class ThsrTicketService {
     public List<ThsrSummaryDTO> searchTickets(SearchRequest request) {
         log.info(">>>> [查詢服務] 接收到需求: {}", request);
 
-        // 1. 從資料庫把中文站名轉成 TDX ID
-        String fromId = stationRepo.findByStationNameContaining(request.from())
-                .map(Station::getTdxId)
-                .orElseThrow(() -> new ApBusinessException(Constant.RCODE.FROM_STATION_NOT_FOUND));
+        // 1. 站名正規化與 ID 轉換
+        String normalizedFrom = normalizeStationName(request.from());
+        String normalizedTo = normalizeStationName(request.to());
 
-        String toId = stationRepo.findByStationNameContaining(request.to())
-                .map(Station::getTdxId)
-                .orElseThrow(() -> new ApBusinessException(Constant.RCODE.TO_STATION_NOT_FOUND));
+        String fromId = findStationIdByName(normalizedFrom, Constant.RCODE.FROM_STATION_NOT_FOUND);
+        String toId = findStationIdByName(normalizedTo, Constant.RCODE.TO_STATION_NOT_FOUND);
 
         // 2. 呼叫 TDX API 拿原始時刻表 & 座位資訊
         List<ThsrTimetableDTO> allTrains = tdxService.getThsrTimetable(fromId, toId, request.date());
         List<ThsrOdAvailableSeatDTO.OdAvailableSeatDTO> allSeats = tdxService.getThsrAvailableSeats(fromId, toId, request.date());
 
-        // 3. 如果使用者有指定票種或費率，就去查票價
-        List<FareResultDTO> fares = List.of();
+        // 3. 總是查詢票價，以便前端/Flex Message 顯示
+        List<ThsrFareDTO> tdxFares = tdxService.getFares(fromId, toId);
 
-        if (request.ticketType() != null || request.fareClass() != null) {
-            List<ThsrFareDTO> tdxFares = tdxService.getFares(fromId, toId);
+        // 準備過濾條件參數 (若為 null 則不過濾)
+        Integer targetFareClass = (request.fareClass() != null && Constant.FareClass.fromName(request.fareClass()) != null) 
+                ? Constant.FareClass.fromName(request.fareClass()).getCode()
+                : null;
+                
+        Integer targetTicketType = (request.ticketType() != null && Constant.TicketType.fromName(request.ticketType()) != null) 
+                ? Constant.TicketType.fromName(request.ticketType()).getCode()
+                : null;
+                
+        Integer targetCabinClass = (request.cabinClass() != null && Constant.CabinClass.fromName(request.cabinClass()) != null) 
+                ? Constant.CabinClass.fromName(request.cabinClass()).getCode()
+                : null;
+        
+        log.info(">>>> [DEBUG] Filters - FareClass: {}, TicketType: {}, CabinClass: {}", targetFareClass, targetTicketType, targetCabinClass);
 
-            Integer targetFareClass = FARE_CLASS_MAP.getOrDefault(request.fareClass(), 1);
+        int rawCount = tdxFares.stream().mapToInt(f -> f.fares().size()).sum();
+        log.info(">>>> [DEBUG] Raw fares count from TDX: {}", rawCount);
 
-            fares = tdxFares.stream()
-                    .flatMap(fareDTO -> fareDTO.fares().stream())
-                    .filter(fare -> fare.fareClass().equals(targetFareClass))
-                    .filter(fare -> request.cabinClass() == null || CABIN_CLASS_MAP.get(request.cabinClass()).equals(fare.cabinClass()))
-                    .map(fare -> {
-                        String ticketTypeName = TICKET_TYPE_MAP.entrySet().stream()
-                                .filter(e -> e.getValue().equals(fare.ticketType()))
-                                .map(Map.Entry::getKey)
-                                .findFirst().orElse("未知");
-                        String fareClassName = FARE_CLASS_MAP.entrySet().stream()
-                                .filter(e -> e.getValue().equals(fare.fareClass()))
-                                .map(Map.Entry::getKey)
-                                .findFirst().orElse("未知");
-                        String cabinClassName = CABIN_CLASS_MAP.entrySet().stream()
-                                .filter(e -> e.getValue().equals(fare.cabinClass()))
-                                .map(Map.Entry::getKey)
-                                .findFirst().orElse("未知");
-                        return new FareResultDTO(ticketTypeName, fareClassName, cabinClassName, fare.price());
-                    })
-                    .collect(Collectors.toList());
+        List<FareResultDTO> fares = tdxFares.stream()
+                .flatMap(fareDTO -> fareDTO.fares().stream())
+                // 條件過濾：如果 request 有指定才過濾，否則通過
+                .filter(fare -> targetFareClass == null || fare.fareClass().equals(targetFareClass))
+                .filter(fare -> targetTicketType == null || fare.ticketType().equals(targetTicketType))
+                .filter(fare -> targetCabinClass == null || fare.cabinClass().equals(targetCabinClass))
+                .map(fare -> {
+                    Constant.TicketType type = Constant.TicketType.fromCode(fare.ticketType());
+                    String ticketTypeName = (type != null) ? type.getName() : "未知";
+                    
+                    Constant.FareClass fc = Constant.FareClass.fromCode(fare.fareClass());
+                    String fareClassName = (fc != null) ? fc.getName() : "未知";
+                    
+                    Constant.CabinClass cc = Constant.CabinClass.fromCode(fare.cabinClass());
+                    String cabinClassName = (cc != null) ? cc.getName() : "未知";
+                    
+                    return new FareResultDTO(ticketTypeName, fareClassName, cabinClassName, fare.price());
+                })
+                .collect(Collectors.toList());
 
-            log.info(">>>> [查詢服務] 票價查詢結果數量: {}", fares.size());
-        }
+        log.info(">>>> [查詢服務] 票價查詢結果數量: {}", fares.size());
 
 
         // 4. 將座位資訊轉為 Map<車次號碼, 座位物件> 以便快速查找
@@ -182,16 +128,33 @@ public class ThsrTicketService {
     public String bookTicket(BookingRequest request) {
         log.info(">>>> [訂票服務] 接收到需求: {}", request);
 
+        String normalizedFrom = normalizeStationName(request.from());
+        String normalizedTo = normalizeStationName(request.to());
+
         // 檢查參數完整性
         if (request.trainNumber() == null || request.trainNumber().isBlank() ||
-            request.from() == null || request.from().isBlank() ||
-            request.to() == null || request.to().isBlank() ||
-            request.trainDate() == null || request.trainDate().isBlank() ||
-            request.trainTime() == null || request.trainTime().isBlank()) {
+                normalizedFrom == null || normalizedFrom.isBlank() ||
+                normalizedTo == null || normalizedTo.isBlank() ||
+                request.trainDate() == null || request.trainDate().isBlank() ||
+                request.trainTime() == null || request.trainTime().isBlank()) {
 
             return "不好意思，我需要更完整的資訊才能幫您產生訂票連結。請告訴我您要搭乘的「起點站」、「終點站」、「日期」以及「出發時間」喔！";
         }
 
-        return tdxService.getMaasDeepLink(request.from(), request.to(), request.trainDate(), request.trainTime(), request.trainNumber());
+        return tdxService.getMaasDeepLink(normalizedFrom, normalizedTo, request.trainDate(), request.trainTime(), request.trainNumber());
+    }
+
+    private String normalizeStationName(String inputName) {
+        if (inputName == null) return "";
+        // 移除常見贅字
+        String cleaned = inputName.replace("高鐵", "").replace("站", "").trim();
+        // 對應別名 (如: 高雄 -> 左營)
+        return STATION_ALIAS_MAP.getOrDefault(cleaned, cleaned);
+    }
+
+    private String findStationIdByName(String stationName, Constant.RCODE errorCode) {
+        return stationRepo.findByStationNameContaining(stationName)
+                .map(Station::getTdxId)
+                .orElseThrow(() -> new ApBusinessException(errorCode));
     }
 }

@@ -1,6 +1,5 @@
 package com.next.nexrailai.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.common.Constant;
 import com.next.nexrailai.dto.*;
@@ -20,7 +19,6 @@ import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Slf4j
@@ -28,12 +26,6 @@ import java.util.Map;
 public class TdxService {
 
     private static final String TDX_TOKEN_REDIS_KEY = "tdx:access_token";
-    private static final Map<String, Integer> DEEPLINK_MAP = Map.ofEntries(
-            Map.entry("0990", 1), Map.entry("1000", 2), Map.entry("1020", 3),
-            Map.entry("1030", 4), Map.entry("1035", 5), Map.entry("1040", 6),
-            Map.entry("1043", 7), Map.entry("1047", 8), Map.entry("1050", 9),
-            Map.entry("1053", 10), Map.entry("1057", 11), Map.entry("1060", 12)
-    );
 
     private final RestClient restClient;
     private final StationRepository stationRepo;
@@ -60,9 +52,9 @@ public class TdxService {
                 return;
             }
 
-            // 1. 呼叫 TDX API (使用剛才定義的 HsrStationDTO)
+            // 1. 呼叫 TDX API
             List<ThsrStationDTO> tdxStations = restClient.get()
-                    .uri("https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/Station")
+                    .uri("/api/basic/v2/Rail/THSR/Station")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<ThsrStationDTO>>() {});
@@ -83,7 +75,6 @@ public class TdxService {
                             .map(dto -> Station.builder()
                             .stationName(dto.stationName().zhTw())
                             .tdxId(dto.stationId())
-                            .deeplinkId(DEEPLINK_MAP.getOrDefault(dto.stationId(), 0))
                             .longitude(dto.position().lon())
                             .latitude(dto.position().lat())
                             .build())
@@ -115,20 +106,20 @@ public class TdxService {
         }
 
         // 2. 快取未命中，呼叫 TDX API
-        String url = String.format(
-                "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/OD/%s/to/%s/%s?$format=JSON",
-                fromStationId, toStationId, date
-        );
-
         try {
             List<ThsrTimetableDTO> timeTable = restClient.get()
-                    .uri(url)
+                    .uri(uriBuilder ->
+                            uriBuilder
+                                .path("/api/basic/v2/Rail/THSR/DailyTimetable/OD/{from}/to/{to}/{date}")
+                                .queryParam("$format", "JSON")
+                                .build(fromStationId, toStationId, date)
+                    )
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<ThsrTimetableDTO>>() {
                     });
 
-            // log.debug(">>>>> [TDX Timetable Result]: {}", JsonUtil.prettyJson(timeTable));
+            log.debug(">>>>> [TDX Timetable Result]: {}", JsonUtil.prettyJson(timeTable));
 
             if (timeTable != null && !timeTable.isEmpty()) {
                 // 3. 成功獲取後，寫入 Redis 快取
@@ -151,20 +142,19 @@ public class TdxService {
 
     public List<ThsrOdAvailableSeatDTO.OdAvailableSeatDTO> getThsrAvailableSeats(String fromStationId, String toStationId, String date) {
         log.info(">>>> [TDX 查詢] 查詢座位: {} -> {} 日期: {}", fromStationId, toStationId, date);
-
-        String url = String.format(
-                "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/AvailableSeatStatus/Train/OD/%s/to/%s/TrainDate/%s?$format=JSON",
-                fromStationId, toStationId, date
-        );
-
         try {
             ThsrOdAvailableSeatDTO apiResponse = restClient.get()
-                    .uri(url)
+                    .uri(uriBuilder ->
+                            uriBuilder
+                                .path("/api/basic/v2/Rail/THSR/AvailableSeatStatus/Train/OD/{from}/to/{to}/TrainDate/{date}")
+                                .queryParam("$format", "JSON")
+                                .build(fromStationId, toStationId, date)
+                    )
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
                     .retrieve()
                     .body(ThsrOdAvailableSeatDTO.class);
 
-            // log.debug(">>>>> [TDX AvailableSeat Result]: {}", JsonUtil.prettyJson(apiResponse));
+            log.debug(">>>>> [TDX AvailableSeat Result]: {}", JsonUtil.prettyJson(apiResponse));
 
             if (apiResponse != null && apiResponse.availableSeats() != null) {
                 return apiResponse.availableSeats();
@@ -195,14 +185,14 @@ public class TdxService {
         log.warn(">>>> [TDX 查詢] 票價快取未命中，準備呼叫 TDX API...");
 
         // 2. 快取未命中，呼叫 TDX API
-        String url = String.format(
-                "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/ODFare/%s/to/%s?$format=JSON",
-                originStationID, destinationStationID
-        );
-
         try {
             List<ThsrFareDTO> fares = restClient.get()
-                    .uri(url)
+                    .uri(uriBuilder ->
+                            uriBuilder
+                                .path("/api/basic/v2/Rail/THSR/ODFare/{from}/to/{to}")
+                                .queryParam("$format", "JSON")
+                                .build(originStationID, destinationStationID)
+                    )
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
@@ -240,22 +230,26 @@ public class TdxService {
      */
     public String getMaasDeepLink(String fromStationName, String toStationName, String trainDate, String trainTime, String trainNumber) {
         log.info(">>>> [TDX MAAS] 查詢訂票 DeepLink: {} -> {} 日期: {} 時間: {} 車次: {}", fromStationName, toStationName, trainDate, trainTime, trainNumber);
-
-        String url = String.format(
-                "https://tdx.transportdata.tw/api/maas-thsr/booking/deeplink/direct/hsr?start_station=%s&end_station=%s&train_date=%s&train_time=%s&train_number=%s",
-                fromStationName, toStationName, trainDate, trainTime, trainNumber
-        );
-
         try {
             MaasDeeplinkResponseDTO apiResponse = restClient.get()
-                    .uri(url)
+                    .uri(uriBuilder ->
+                            uriBuilder
+                                .path("/api/maas-thsr/booking/deeplink/direct/hsr")
+                                .queryParam("start_station", "{start}")
+                                .queryParam("end_station", "{end}")
+                                .queryParam("train_date", "{date}")
+                                .queryParam("train_time", "{time}")
+                                .queryParam("train_number", "{number}")
+                                .build(fromStationName, toStationName, trainDate, trainTime, trainNumber)
+                    )
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken())
                     .retrieve()
                     .body(new ParameterizedTypeReference<MaasDeeplinkResponseDTO>() {});
 
             if (apiResponse != null && "success".equals(apiResponse.result()) && apiResponse.data() != null) {
-                log.info(">>>> [TDX MAAS] 成功取得 DeepLink: {}", apiResponse.data().deeplink());
-                return apiResponse.data().deeplink();
+                String deepLink = apiResponse.data().deeplink();
+                log.info(">>>> [TDX MAAS] 成功取得 DeepLink: {}", deepLink);
+                return deepLink;
             } else {
                 log.warn(">>>> [TDX MAAS] 取得 DeepLink 失敗或回應異常: {}", JsonUtil.prettyJson(apiResponse));
                 return null;
@@ -266,14 +260,14 @@ public class TdxService {
         }
     }
 
-    public String getAccessToken() {
+    private String getAccessToken() {
         String accessToken = redisTemplate.opsForValue().get(TDX_TOKEN_REDIS_KEY);
         if (accessToken != null) return accessToken;
 
         log.info("Token 已過期或不存在，準備向 TDX 申請新 Token...");
 
         TdxTokenResponse response = restClient.post()
-                .uri("https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token")
+                .uri("/auth/realms/TDXConnect/protocol/openid-connect/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body("grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret)
                 .retrieve()

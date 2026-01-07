@@ -1,4 +1,4 @@
-package com.next.nexrailai.service;
+package com.next.nexrailai.jpa.service;
 
 import com.linecorp.bot.messaging.model.UserProfileResponse;
 import com.next.nexrailai.common.Constant;

@@ -1,18 +1,20 @@
 package com.next.nexrailai.component;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.next.nexrailai.config.PromptConfig;
+import com.next.nexrailai.context.ThsrContextHolder;
 import com.next.nexrailai.dto.ThsrSummaryDTO;
+import com.next.nexrailai.dto.ai.BookingRequest;
+import com.next.nexrailai.dto.ai.RecallMemoryRequest;
+import com.next.nexrailai.dto.ai.SaveMemoryRequest;
+import com.next.nexrailai.dto.ai.SearchRequest;
 import com.next.nexrailai.service.ThsrTicketService;
-import com.next.nexrailai.service.UserMemoryService;
+import com.next.nexrailai.jpa.service.UserMemoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.function.Function;
 
 @Component
 @RequiredArgsConstructor
@@ -22,30 +24,12 @@ public class ThsrFunctionTools {
     private final ThsrTicketService service;
     private final UserMemoryService memoryService;
 
-    // --- 記憶功能 Request 定義 ---
-
-    public record SaveMemoryRequest(
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("記憶的關鍵字標籤，例如：'兒子'、'回家'、'出差'。")
-            String key,
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("要記憶的具體內容 JSON 字串。請包含 from, to, fareClass, cabinClass 等資訊。")
-            String content
-    ) {}
-
-    public record RecallMemoryRequest(
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("要提取記憶的關鍵字標籤。")
-            String key
-    ) {}
-
-    // --- 工具 Callback 註冊 ---
 
     public ToolCallback saveUserMemory(String chatId) {
         return FunctionToolCallback
                 .builder("saveUserMemory", (SaveMemoryRequest req) -> 
                         memoryService.saveMemory(chatId, req.key(), req.content()))
-                .description("儲存使用者的常用行程或偏好設定。")
+                .description(promptConfig.getTools().get("save-user-memory").getText())
                 .inputType(SaveMemoryRequest.class)
                 .build();
     }
@@ -54,26 +38,50 @@ public class ThsrFunctionTools {
         return FunctionToolCallback
                 .builder("recallUserMemory", (RecallMemoryRequest req) -> 
                         memoryService.recallMemory(chatId, req.key()))
-                .description("提取使用者先前儲存的常用行程或偏好設定。")
+                .description(promptConfig.getTools().get("recall-user-memory").getText())
                 .inputType(RecallMemoryRequest.class)
                 .build();
     }
 
     public ToolCallback bookTicket() {
         return FunctionToolCallback
-                .builder("bookTicket", (Function<ThsrTicketService.BookingRequest, String>)
-                        service::bookTicket)
-                .description(promptConfig.getBookTicket().get("text"))
-                .inputType(ThsrTicketService.BookingRequest.class)
+                .builder("bookTicket", (BookingRequest req) -> {
+                    String link = service.bookTicket(req);
+                    
+                    // 如果成功取得連結 (且不是錯誤提示訊息)，寫入 Context
+                    if (link != null && link.startsWith("http")) {
+                        ThsrContextHolder.set(ThsrContextHolder.ThsrSearchResult.builder()
+                                .bookingLink(link)
+                                .origin(req.from())
+                                .destination(req.to())
+                                .trainDate(req.trainDate())
+                                .trainTime(req.trainTime())
+                                .trainNumber(req.trainNumber())
+                                .build());
+                    }
+                    return link;
+                })
+                .description(promptConfig.getTools().get("book-ticket").getText())
+                .inputType(BookingRequest.class)
                 .build();
     }
 
     public ToolCallback thsrJourneySearch() {
         return FunctionToolCallback
-                .builder("thsrJourneySearch", (Function<ThsrTicketService.SearchRequest, List<ThsrSummaryDTO>>)
-                        service::searchTickets)
-                .description(promptConfig.getJourneySearch().get("text"))
-                .inputType(ThsrTicketService.SearchRequest.class)
+                .builder("thsrJourneySearch", (SearchRequest req) -> {
+                    List<ThsrSummaryDTO> results = service.searchTickets(req);
+                    
+                    // 寫入 Context 以便後續產生 Flex Message
+                    ThsrContextHolder.set(ThsrContextHolder.ThsrSearchResult.builder()
+                            .trains(results)
+                            .origin(req.from())
+                            .destination(req.to())
+                            .build());
+                            
+                    return results;
+                })
+                .description(promptConfig.getTools().get("journey-search").getText())
+                .inputType(SearchRequest.class)
                 .build();
     }
 }

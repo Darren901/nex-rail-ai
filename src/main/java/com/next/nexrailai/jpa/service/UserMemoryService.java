@@ -1,4 +1,4 @@
-package com.next.nexrailai.service;
+package com.next.nexrailai.jpa.service;
 
 import com.next.nexrailai.jpa.entity.UserMemory;
 import com.next.nexrailai.jpa.repository.UserMemoryRepository;

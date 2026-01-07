@@ -21,9 +21,6 @@ public class Station {
     @Column(nullable = false)
     private String tdxId;
 
-    @Column(nullable = false)
-    private Integer deeplinkId;
-
     private Double longitude;
 
     private Double latitude;

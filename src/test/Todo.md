@@ -18,8 +18,8 @@
 
 ### 第三階段：介面整合（下一站 🚉）
 
-- [ ]  **LINE Messaging API 串接**：實作 Webhook Controller。
-- [ ]  **Flex Message 視覺化**：將車次結果轉換成漂亮的 LINE 卡片（Flex Message）。
+- [x]  **LINE Messaging API 串接**：實作 Webhook Controller。
+- [x]  **Flex Message 視覺化**：將車次結果轉換成漂亮的 LINE 卡片（Flex Message）。
 - [ ]  **異常通報**：監控 `/Alert` API，當有地震或延誤時自動在對話中插播。
 
 ### 第四階段：進階功能（終點站 🏆）

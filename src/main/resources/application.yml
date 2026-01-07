@@ -52,6 +52,11 @@ logging:
 tdx:
   client-id: ${TDX_CLIENT_ID}
   client-secret: ${TDX_CLIENT_SECRET}
+  base-url: https://tdx.transportdata.tw
+
+# Application Config
+app:
+  base-url: https://3dc2c703048e.ngrok-free.app
 
 # Line Bot
 line:
