@@ -35,3 +35,4 @@ build/
 ### Config ###
 compose.yaml
 sensitive.yml
+postgres-data/
