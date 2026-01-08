@@ -56,9 +56,9 @@ public class AppUserService {
     @Transactional
     public void setUserDisable(String userId) {
         appUserRepo.findById(userId).ifPresent(appUser -> {
-            appUser.setStatus(Constant.USER_STATUS.DISABLE.getCode());
+            appUser.setStatus(AppUser.UserStatus.DISABLE);
             appUserRepo.save(appUser);
-            log.info(">>>> [使用者服務] 使用者把我們封鎖了...: {} ({})", userId);
+            log.info(">>>> [使用者服務] 使用者把我們封鎖了... : ({})", userId);
         });
     }
 }

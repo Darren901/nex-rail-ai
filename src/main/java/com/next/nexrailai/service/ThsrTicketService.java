@@ -144,6 +144,15 @@ public class ThsrTicketService {
         return tdxService.getMaasDeepLink(normalizedFrom, normalizedTo, request.trainDate(), request.trainTime(), request.trainNumber());
     }
 
+    /**
+     * 直接產生訂票連結 (供排程服務使用)
+     */
+    public String generateDeepLink(String from, String to, String date, String time, String trainNo) {
+        String normalizedFrom = normalizeStationName(from);
+        String normalizedTo = normalizeStationName(to);
+        return tdxService.getMaasDeepLink(normalizedFrom, normalizedTo, date, time, trainNo);
+    }
+
     private String normalizeStationName(String inputName) {
         if (inputName == null) return "";
         // 移除常見贅字

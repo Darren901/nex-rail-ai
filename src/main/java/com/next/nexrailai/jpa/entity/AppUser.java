@@ -1,10 +1,6 @@
 package com.next.nexrailai.jpa.entity;
 
-import com.next.nexrailai.common.Constant;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -26,7 +22,10 @@ public class AppUser {
 
     private String displayName;
 
-    private String status = Constant.USER_STATUS.ENABLE.getCode();
+    @Builder.Default
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ENABLE;
 
     private String pictureUrl;
 
@@ -35,4 +34,9 @@ public class AppUser {
 
     @UpdateTimestamp
     private LocalDateTime lastActiveAt;
+
+    public enum UserStatus{
+        ENABLE,
+        DISABLE
+    }
 }

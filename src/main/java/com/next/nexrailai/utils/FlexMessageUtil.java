@@ -224,7 +224,7 @@ public class FlexMessageUtil {
         return new FlexMessage("票價查詢結果", bubble);
     }
 
-    private static FlexBox createCabinPriceBlock(String cabinName, List<com.next.nexrailai.dto.FareResultDTO> fares) {
+    private static FlexBox createCabinPriceBlock(String cabinName, List<FareResultDTO> fares) {
         // 篩選出該艙等的票價
         List<FareResultDTO> cabinFares = fares.stream()
                 .filter(f -> f.cabinClass().equals(cabinName))

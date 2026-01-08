@@ -54,10 +54,16 @@ ai:
       book-ticket:
         text: |
           🎫 **生成訂票連結 (最終工具)**
-          單純的網址產生器。請務必回顧對話記錄提取: origin, destination, trainDate, trainTime, trainNumber。
+          單純的網址產生器。請務必回顧對話記錄提取: from, to, trainDate, trainTime, trainNumber。
       save-user-memory:
         text: |
           儲存使用者的常用行程或偏好設定。
       recall-user-memory:
         text: |
           提取使用者先前儲存的常用行程或偏好設定。
+      add-schedule:
+        text: |
+          設定未來的提醒事項。當使用者要求『提醒我...』、『明天早上叫我...』時使用。
+      monitor-ticket:
+        text: |
+          設定搶票監控任務。當使用者要求『幫我搶票』、『有位子通知我』、『監控班次』時使用。

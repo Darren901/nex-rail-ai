@@ -74,7 +74,7 @@
 <body>
 <div class="container">
     <div class="icon">🚄</div>
-    <h1>正在為您開啟高鐵訂票網站...</h1>
+    <h1>正在為您開啟 T-EX 行動購票...</h1>
     <div class="spinner"></div>
     <p>如果沒有自動跳轉，請點擊下方連結</p>
 
@@ -89,7 +89,6 @@
 
     // 立即跳轉
     if (targetUrl) {
-        // 延遲 500ms 讓使用者看到提示訊息
         setTimeout(() => {
             window.location.href = targetUrl;
         }, 500);

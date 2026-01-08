@@ -29,21 +29,6 @@ public class Constant {
     }
 
     @Getter
-    public enum USER_STATUS{
-        ENABLE  ("1", "啟用"),
-        DISABLE ("0", "停用")
-        ;
-
-        private final String code;
-        private final String message;
-
-        USER_STATUS(String code, String message) {
-            this.code = code;
-            this.message = message;
-        }
-    }
-
-    @Getter
     public enum TicketType {
         ONE_WAY("單程票", 1),
         ROUND_TRIP("來回票", 2),

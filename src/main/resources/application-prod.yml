@@ -1,0 +1,29 @@
+spring:
+  # Database configuration (Neon Serverless)
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # Use Environment Variable for Production/Neon URL
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${DB_USER_NAME}
+    password: ${DB_USER_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 300000
+      max-lifetime: 600000
+  
+  # Disable Docker Compose in Prod
+  docker:
+    compose:
+      enabled: false
+      
+  # Prod JPA settings
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+# Application Config (Prod)
+app:
+  # 在 Zeabur 部署時，設定 APP_BASE_URL 環境變數
+  base-url: ${APP_BASE_URL}

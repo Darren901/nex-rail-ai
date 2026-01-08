@@ -29,7 +29,9 @@ public class AiService {
                         thsrFunctionTools.thsrJourneySearch(),
                         thsrFunctionTools.bookTicket(),
                         thsrFunctionTools.saveUserMemory(chatId),
-                        thsrFunctionTools.recallUserMemory(chatId)
+                        thsrFunctionTools.recallUserMemory(chatId),
+                        thsrFunctionTools.addSchedule(chatId),
+                        thsrFunctionTools.monitorTicket(chatId)
                 )
                 .call()
                 .content();

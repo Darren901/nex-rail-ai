@@ -3,10 +3,8 @@ package com.next.nexrailai.component;
 import com.next.nexrailai.config.PromptConfig;
 import com.next.nexrailai.context.ThsrContextHolder;
 import com.next.nexrailai.dto.ThsrSummaryDTO;
-import com.next.nexrailai.dto.ai.BookingRequest;
-import com.next.nexrailai.dto.ai.RecallMemoryRequest;
-import com.next.nexrailai.dto.ai.SaveMemoryRequest;
-import com.next.nexrailai.dto.ai.SearchRequest;
+import com.next.nexrailai.dto.ai.*;
+import com.next.nexrailai.service.ScheduleService;
 import com.next.nexrailai.service.ThsrTicketService;
 import com.next.nexrailai.jpa.service.UserMemoryService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +12,8 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Component
@@ -23,7 +23,50 @@ public class ThsrFunctionTools {
     private final PromptConfig promptConfig;
     private final ThsrTicketService service;
     private final UserMemoryService memoryService;
+    private final ScheduleService scheduleService;
 
+    public ToolCallback addSchedule(String chatId) {
+        return FunctionToolCallback
+                .builder("addSchedule", (AddScheduleRequest req) -> {
+                    try {
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        LocalDateTime triggerTime = LocalDateTime.parse(req.triggerTime(), formatter);
+                        
+                        scheduleService.createReminder(chatId, triggerTime, req.content());
+                        
+                        return "已成功設定提醒！將在 " + req.triggerTime() + " 提醒您：" + req.content();
+                    } catch (Exception e) {
+                        return "設定提醒失敗，時間格式錯誤。請確保格式為 YYYY-MM-DD HH:mm:ss";
+                    }
+                })
+                .description(promptConfig.getTools().get("add-schedule").getText())
+                .inputType(AddScheduleRequest.class)
+                .build();
+    }
+    
+    public ToolCallback monitorTicket(String chatId) {
+        return FunctionToolCallback
+                .builder("monitorTicket", (MonitorTicketRequest req) -> {
+                    try {
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        LocalDateTime startTime = LocalDateTime.parse(req.startTime(), formatter);
+                        
+                        // 轉換為 SearchRequest
+                        SearchRequest searchRequest = new SearchRequest(
+                                req.from(), req.to(), req.date(), req.time(), null, null, null
+                        );
+                        
+                        scheduleService.createTicketMonitor(chatId, startTime, searchRequest);
+                        
+                        return "已設定搶票監控任務！\n起始時間: " + req.startTime() + "\n監控班次: " + req.date() + " " + (req.time() != null ? req.time() : "") + " " + req.from() + " -> " + req.to() + "\n如果發現有位子，我會立刻通知您！";
+                    } catch (Exception e) {
+                        return "設定監控失敗，時間格式錯誤。";
+                    }
+                })
+                .description(promptConfig.getTools().get("monitor-ticket").getText())
+                .inputType(MonitorTicketRequest.class)
+                .build();
+    }
 
     public ToolCallback saveUserMemory(String chatId) {
         return FunctionToolCallback

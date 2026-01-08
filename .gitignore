@@ -36,3 +36,6 @@ build/
 compose.yaml
 sensitive.yml
 postgres-data/
+
+.gemini/
+gha-creds-*.json
