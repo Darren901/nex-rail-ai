@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -35,5 +38,33 @@ public class UserMemoryService {
         return memoryRepo.findByUserIdAndMemoryKey(userId, key)
                 .map(UserMemory::getMemoryValue)
                 .orElse("找不到關於「" + key + "」的任何記憶。");
+    }
+
+    /**
+     * 獲取使用者的所有記憶
+     */
+    public List<UserMemory> getMemoriesByUser(String userId) {
+        return memoryRepo.findByUserId(userId);
+    }
+
+    /**
+     * 刪除特定記憶
+     */
+    @Transactional
+    public void deleteMemory(Long id, String userId) {
+        memoryRepo.findById(id).ifPresent(memory -> {
+            if (memory.getUserId().equals(userId)) {
+                memoryRepo.delete(memory);
+                log.info(">>>> [記憶服務] 已刪除記憶 ID: {}", id);
+            }
+        });
+    }
+
+    /**
+     * 獲取特定記憶
+     */
+    public Optional<UserMemory> getMemory(Long id, String userId) {
+        return memoryRepo.findById(id)
+                .filter(m -> m.getUserId().equals(userId));
     }
 }

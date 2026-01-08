@@ -64,7 +64,7 @@ public class ScheduleService {
         ScheduleTask task = ScheduleTask.builder()
                 .userId(userId)
                 .triggerTime(triggerTime)
-                .content("監控車票: " + searchRequest.from() + " -> " + searchRequest.to() + " (" + searchRequest.date() + ")")
+                .content("監控車票: " + searchRequest.from() + " ➔ " + searchRequest.to() + " (" + searchRequest.date() + ")")
                 .taskType(ScheduleTask.TaskType.TICKET_MONITOR)
                 .payload(payload)
                 .status(ScheduleTask.TaskStatus.PENDING)
@@ -73,10 +73,26 @@ public class ScheduleService {
     }
 
     /**
-     * 查詢使用者的待辦提醒
+     * 查詢使用者的特定類型任務
      */
-    public List<ScheduleTask> getUserPendingTasks(String userId) {
-        return repository.findByUserIdAndStatus(userId, ScheduleTask.TaskStatus.PENDING);
+    public List<ScheduleTask> getTasksByUserAndType(String userId, ScheduleTask.TaskType type) {
+        return repository.findByUserIdAndStatus(userId, ScheduleTask.TaskStatus.PENDING).stream()
+                .filter(t -> t.getTaskType() == type)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 取消特定任務
+     */
+    @Transactional
+    public void cancelTask(Long id, String userId) {
+        repository.findById(id).ifPresent(task -> {
+            if (task.getUserId().equals(userId)) {
+                task.setStatus(ScheduleTask.TaskStatus.CANCELLED);
+                repository.save(task);
+                log.info(">>>> [Schedule] 已取消任務 ID: {}", id);
+            }
+        });
     }
 
     @Transactional
@@ -130,7 +146,7 @@ public class ScheduleService {
             SearchRequest request = JsonUtil.fromJson(task.getPayload(), SearchRequest.class);
             List<ThsrSummaryDTO> trains = ticketService.searchTickets(request);
 
-            // 檢查是否有位子 (標準座或商務座非客滿)
+            // 檢查是否有位子
             List<ThsrSummaryDTO> availableTrains = trains.stream()
                     .filter(t -> !t.standardSeatStatus().contains("客滿"))
                     .collect(Collectors.toList());

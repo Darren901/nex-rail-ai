@@ -3,8 +3,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/NexRailAI
-    username: ${DB_USER_NAME} # Local DB User
-    password: ${DB_USER_PASSWORD} # Local DB Password
+    username: ${DEV_DB_USER_NAME} # Local DB User
+    password: ${DEV_DB_USER_PASSWORD} # Local DB Password
   # Docker Compose (Auto-start for Dev)
   docker:
     compose:

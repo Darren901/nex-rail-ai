@@ -44,6 +44,7 @@ ai:
 
         # 基礎資訊
         *   今天是 {today}
+        *   現在時間：{current_time}
         *   時間格式：HH:mm (24小時制)
         *   日期格式：YYYY-MM-DD
     tools:

@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface UserMemoryRepository extends JpaRepository<UserMemory, Long> {
     Optional<UserMemory> findByUserIdAndMemoryKey(String userId, String memoryKey);
+    java.util.List<UserMemory> findByUserId(String userId);
 }

@@ -24,12 +24,12 @@ public class CacheManagementController {
             Set<String> keys = redisTemplate.keys("tdx:access_token");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
-                log.info("已清除" + keys.size() + " 個 accessToken");
+                log.info(">>>> [Cache Manager] 已清除{} 個 accessToken", keys.size());
                 return ResponseEntity.ok("已清除 " + keys.size() + " 個 accessToken");
             }
             return ResponseEntity.ok("沒有 accessToken cache 需要清除");
         } catch (Exception e) {
-            log.error("清除 accessToken cache 失敗", e);
+            log.error(">>>> [Cache Manager] 清除 accessToken cache 失敗", e);
             return ResponseEntity.status(500).body("清除失敗: " + e.getMessage());
         }
     }
@@ -41,12 +41,12 @@ public class CacheManagementController {
             Set<String> keys = redisTemplate.keys("tdx:timetable:*");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
-                log.info("已清除 {} 個時刻表 cache", keys.size());
+                log.info(">>>> [Cache Manager] 已清除 {} 個時刻表 cache", keys.size());
                 return ResponseEntity.ok("已清除 " + keys.size() + " 個時刻表 cache");
             }
             return ResponseEntity.ok("沒有時刻表 cache 需要清除");
         } catch (Exception e) {
-            log.error("清除時刻表 cache 失敗", e);
+            log.error(">>>> [Cache Manager] 清除時刻表 cache 失敗", e);
             return ResponseEntity.status(500).body("清除失敗: " + e.getMessage());
         }
     }
@@ -58,12 +58,12 @@ public class CacheManagementController {
             Set<String> keys = redisTemplate.keys("tdx:fares:*");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
-                log.info("已清除 {} 個票價 cache", keys.size());
+                log.info(">>>> [Cache Manager] 已清除 {} 個票價 cache", keys.size());
                 return ResponseEntity.ok("已清除 " + keys.size() + " 個票價 cache");
             }
             return ResponseEntity.ok("沒有票價 cache 需要清除");
         } catch (Exception e) {
-            log.error("清除票價 cache 失敗", e);
+            log.error(">>>> [Cache Manager] 清除票價 cache 失敗", e);
             return ResponseEntity.status(500).body("清除失敗: " + e.getMessage());
         }
     }

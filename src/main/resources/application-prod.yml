@@ -4,8 +4,8 @@ spring:
     driver-class-name: org.postgresql.Driver
     # Use Environment Variable for Production/Neon URL
     url: ${SPRING_DATASOURCE_URL}
-    username: ${DB_USER_NAME}
-    password: ${DB_USER_PASSWORD}
+    username: ${PROD_DB_USER_NAME}
+    password: ${PROD_DB_USER_PASSWORD}
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1

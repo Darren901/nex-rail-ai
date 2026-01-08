@@ -1,16 +1,159 @@
 package com.next.nexrailai.utils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.linecorp.bot.messaging.model.*;
 import com.next.nexrailai.dto.FareResultDTO;
 import com.next.nexrailai.dto.ThsrSummaryDTO;
+import com.next.nexrailai.jpa.entity.ScheduleTask;
+import com.next.nexrailai.jpa.entity.UserMemory;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FlexMessageUtil {
+
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /**
+     * 建立任務列表卡片 (提醒或監控)
+     */
+    public static FlexMessage createTaskListBubble(String title, List<ScheduleTask> tasks) {
+        FlexBox header = new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of(
+                new FlexText.Builder().text(title).weight(FlexText.Weight.BOLD).color("#ffffff").size("md").build()
+        )).backgroundColor("#464E51").build();
+
+        List<FlexComponent> bodyContents = new ArrayList<>();
+
+        if (tasks == null || tasks.isEmpty()) {
+            bodyContents.add(new FlexText.Builder().text("目前沒有進行中的任務喔！").size("sm").color("#aaaaaa").margin("md").build());
+        } else {
+            for (ScheduleTask task : tasks) {
+                bodyContents.add(createTaskRow(task));
+                bodyContents.add(new FlexSeparator.Builder().margin("md").build());
+            }
+            // 移除最後一個分隔線
+            bodyContents.remove(bodyContents.size() - 1);
+        }
+
+        FlexBox body = new FlexBox.Builder(FlexBox.Layout.VERTICAL, bodyContents).spacing("md").build();
+
+        FlexBubble bubble = new FlexBubble.Builder()
+                .header(header)
+                .body(body)
+                .size(FlexBubble.Size.MEGA)
+                .build();
+
+        return new FlexMessage(title + "列表", bubble);
+    }
+
+    private static FlexBox createTaskRow(ScheduleTask task) {
+        String timeStr = task.getTriggerTime().format(DATE_TIME_FORMATTER);
+        String desc = task.getContent();
+
+        return new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(
+                new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of(
+                        new FlexText.Builder().text(timeStr).size("xs").color("#FF6B00").weight(FlexText.Weight.BOLD).build(),
+                        new FlexText.Builder().text(desc).size("sm").weight(FlexText.Weight.BOLD).wrap(true).build()
+                )).flex(4).build(),
+                new FlexButton.Builder(new PostbackAction.Builder()
+                        .label("×")
+                        .data("action=cancel_task&id=" + task.getId())
+                        .displayText("取消任務：" + desc)
+                        .build())
+                        .style(FlexButton.Style.SECONDARY)
+                        .height(FlexButton.Height.SM)
+                        .flex(1)
+                        .build()
+        )).alignItems(FlexBox.AlignItems.CENTER).margin("md").build();
+    }
+
+    /**
+     * 建立常用行程列表卡片
+     */
+    public static FlexMessage createMemoryListBubble(List<UserMemory> memories) {
+        FlexBox header = new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of(
+                new FlexText.Builder().text("常用行程管理").weight(FlexText.Weight.BOLD).color("#ffffff").size("md").build()
+        )).backgroundColor("#0081C6").build();
+
+        List<FlexComponent> bodyContents = new ArrayList<>();
+
+        if (memories == null || memories.isEmpty()) {
+            bodyContents.add(new FlexText.Builder().text("目前還沒有儲存任何行程喔！\n您可以對我說：『記住這班車』").size("sm").color("#aaaaaa").margin("md").wrap(true).build());
+        } else {
+            for (UserMemory memory : memories) {
+                bodyContents.add(createMemoryRow(memory));
+                bodyContents.add(new FlexSeparator.Builder().margin("md").build());
+            }
+            bodyContents.remove(bodyContents.size() - 1);
+        }
+
+        FlexBox body = new FlexBox.Builder(FlexBox.Layout.VERTICAL, bodyContents).spacing("md").build();
+
+        FlexBubble bubble = new FlexBubble.Builder()
+                .header(header)
+                .body(body)
+                .size(FlexBubble.Size.MEGA)
+                .build();
+
+        return new FlexMessage("常用行程列表", bubble);
+    }
+
+    private static FlexBox createMemoryRow(UserMemory memory) {
+        String displayText;
+        try {
+            Map<String, Object> data = JsonUtil.fromJson(memory.getMemoryValue(), new TypeReference<>() {});
+            if (data == null) {
+                displayText = memory.getMemoryValue();
+            } else {
+                String from = (String) data.getOrDefault("from", "");
+                String to = (String) data.getOrDefault("to", "");
+                String trainNo = (String) data.getOrDefault("trainNumber", "");
+                String date = (String) data.getOrDefault("trainDate", "");
+                String time = (String) data.getOrDefault("trainTime", "");
+                
+                if (trainNo != null && !trainNo.isEmpty()) {
+                    displayText = String.format("%s ➔ %s (車次 %s)\n%s %s", from, to, trainNo, date, time);
+                } else {
+                    displayText = String.format("%s ➔ %s\n%s %s", from, to, date, time);
+                }
+            }
+        } catch (Exception e) {
+            displayText = memory.getMemoryValue(); // Fallback
+        }
+
+        return new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(
+                new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of(
+                        new FlexText.Builder().text(memory.getMemoryKey()).size("md").weight(FlexText.Weight.BOLD).build(),
+                        new FlexText.Builder().text(displayText).size("xs").color("#888888").wrap(true).build()
+                )).flex(3).build(),
+                new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(
+                        new FlexButton.Builder(new PostbackAction.Builder()
+                                .label("⌕")
+                                .data("action=use_memory&id=" + memory.getId())
+                                .displayText("使用行程：" + memory.getMemoryKey())
+                                .build())
+                                .style(FlexButton.Style.PRIMARY)
+                                .height(FlexButton.Height.SM)
+                                .color("#0081C6")
+                                .build(),
+                        new FlexButton.Builder(new PostbackAction.Builder()
+                                .label("×")
+                                .data("action=delete_memory&id=" + memory.getId())
+                                .displayText("刪除行程：" + memory.getMemoryKey())
+                                .build())
+                                .style(FlexButton.Style.SECONDARY)
+                                .height(FlexButton.Height.SM)
+                                .margin("xs")
+                                .build()
+                )).flex(2).build()
+        )).alignItems(FlexBox.AlignItems.CENTER).margin("md").build();
+    }
 
     /**
      * 將高鐵班次列表轉換為 LINE Flex Carousel 訊息
@@ -142,27 +285,34 @@ public class FlexMessageUtil {
 
     private static FlexBox createSeatStatusRow(String label, String status) {
 
-        String color = "#28a745"; // 綠
-        String icon = "🟢 ";
-
+        String color = "#28a745"; // 綠 (有位)
         if (status.contains("客滿") || status.contains("已過售票")) {
-            color = "#dc3545"; // 紅
-            icon = "🔴 ";
+            color = "#dc3545"; // 紅 (客滿)
         } else if (status.contains("不多") || status.contains("緊張")) {
-            color = "#ffc107"; // 黃
-            icon = "🟡 ";
+            color = "#ffc107"; // 黃 (緊張)
         }
 
+        // 圓形狀態燈
+        FlexBox statusDot = new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of())
+                .width("12px")
+                .height("12px")
+                .cornerRadius("6px") // 圓形
+                .backgroundColor(color)
+                .build();
+
         return new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(
-                new FlexText.Builder().text(label).size("sm").color("#666666").build(),
+                statusDot,
                 new FlexText.Builder()
-                        .text(icon + status)
+                        .text(label + " " + status)
                         .size("sm")
-                        .weight(FlexText.Weight.BOLD)
-                        .color(color)
-                        .align(FlexText.Align.END)
+                        .color("#555555")
+                        .margin("md") // 圓點與文字的間距
+                        .flex(1)
                         .build()
-        )).margin("sm").build();
+        ))
+                .alignItems(FlexBox.AlignItems.CENTER) // 垂直置中
+                .margin("sm")
+                .build();
     }
 
     /**
