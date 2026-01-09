@@ -34,8 +34,10 @@ build/
 
 ### Config ###
 compose.yaml
-sensitive.yml
+application-sensitive.yml
 postgres-data/
 
 .gemini/
 gha-creds-*.json
+Admin-API-Spec.md
+
