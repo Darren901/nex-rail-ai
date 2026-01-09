@@ -22,4 +22,7 @@ public interface ScheduleTaskRepository extends JpaRepository<ScheduleTask, Long
 
     // 後台管理用：分頁查詢特定狀態的任務
     Page<ScheduleTask> findByStatus(ScheduleTask.TaskStatus status, org.springframework.data.domain.Pageable pageable);
+
+    // 統計特定狀態的任務數量
+    long countByStatus(ScheduleTask.TaskStatus status);
 }

@@ -32,7 +32,6 @@ public class AppUser {
     @CreationTimestamp
     private LocalDateTime joinedAt;
 
-    @UpdateTimestamp
     private LocalDateTime lastActiveAt;
 
     public enum UserStatus{

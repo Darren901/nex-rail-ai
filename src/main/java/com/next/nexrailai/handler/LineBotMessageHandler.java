@@ -31,12 +31,14 @@ public class LineBotMessageHandler {
         log.info(">>>>> [LINE Handler] Received message: [{}]", originalMessageText);
         final String userId = event.source().userId();
 
+        appUserService.setUserActiveAt(userId);
         lineService.handleUserMessage(userId, originalMessageText, event.replyToken());
     }
 
     @EventMapping
     public void handlePostbackEvent(PostbackEvent event) {
         log.info(">>>> [LINE Handler] Received postback event: {}", event.postback().data());
+        appUserService.setUserActiveAt(event.source().userId());
         lineService.handlePostback(event.source().userId(), event.postback().data(), event.replyToken());
     }
 

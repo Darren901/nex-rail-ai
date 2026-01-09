@@ -20,9 +20,6 @@ public class AppUserService {
 
     /**
      * 儲存或更新使用者資訊
-     *
-     * @param userId LINE User ID
-     * @param displayName 顯示名稱
      */
     @Transactional
     public void saveOrUpdateUser(UserProfileResponse profile) {
@@ -30,7 +27,6 @@ public class AppUserService {
                 user -> {
                     // 使用者已存在，更新資訊
                     user.setDisplayName(profile.displayName());
-                    user.setLastActiveAt(LocalDateTime.now());
                     user.setPictureUrl(String.valueOf(profile.pictureUrl()));
                     appUserRepo.save(user);
                     log.info(">>>> [使用者服務] 更新使用者: {} ({})", profile.displayName(), profile.userId());
@@ -46,6 +42,20 @@ public class AppUserService {
                     log.info(">>>> [使用者服務] 新增使用者: {} ({})", profile.displayName(), profile.userId());
                 }
         );
+    }
+
+    /**
+     * 使用者傳送訊息
+     *
+     * @param userId LINE User ID
+     */
+    @Transactional
+    public void setUserActiveAt(String userId) {
+        appUserRepo.findById(userId).ifPresent(appUser -> {
+            appUser.setLastActiveAt(LocalDateTime.now());
+            appUserRepo.save(appUser);
+            log.info(">>>> [使用者服務] 使用者使用者傳訊息了！ : ({})", userId);
+        });
     }
 
     /**

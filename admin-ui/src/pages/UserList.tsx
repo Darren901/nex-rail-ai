@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Avatar, Tag, Button, Space, Modal, Form, InputNumber, Select, message, Tooltip } from 'antd';
-import type { TableProps } from 'antd'; // Use TableProps instead of direct es path
-import { UserOutlined, EditOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Avatar, Tag, Button, Space, Modal, Form, InputNumber, Select, message, Tooltip, Input, Progress } from 'antd';
+import type { TableProps } from 'antd';
+import { UserOutlined, EditOutlined, StopOutlined, CheckCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import { getUsers, updateUserStatus, updateUserQuota } from '../services/user';
 import type { UserDetail, UpdateQuotaParams } from '../services/user';
 
+const { Search } = Input;
 type ColumnsType<T> = TableProps<T>['columns'];
 
 const UserList: React.FC = () => {
@@ -12,17 +13,17 @@ const UserList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [keyword, setKeyword] = useState('');
   
   // Modal 狀態
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDetail | null>(null);
   const [form] = Form.useForm();
 
-  const fetchUsers = async (page: number) => {
+  const fetchUsers = async (page: number, searchKey?: string) => {
     setLoading(true);
     try {
-      // API page 是 0-based
-      const res = await getUsers(page - 1, 10);
+      const res = await getUsers(page - 1, 10, searchKey);
       setUsers(res.content);
       setTotal(res.totalElements);
       setCurrentPage(page);
@@ -34,15 +35,20 @@ const UserList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchUsers(1);
+    fetchUsers(1, keyword);
   }, []);
+
+  const onSearch = (value: string) => {
+    setKeyword(value);
+    fetchUsers(1, value);
+  };
 
   const handleStatusChange = async (user: UserDetail) => {
     const newStatus = user.status === 'ENABLE' ? 'DISABLE' : 'ENABLE';
     try {
       await updateUserStatus(user.lineUserId, newStatus);
       message.success(`已${newStatus === 'ENABLE' ? '啟用' : '停用'}使用者`);
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, keyword);
     } catch (error) {
       console.error(error);
     }
@@ -68,7 +74,7 @@ const UserList: React.FC = () => {
       await updateUserQuota(editingUser.lineUserId, payload);
       message.success('額度已更新');
       setIsModalOpen(false);
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, keyword);
     } catch (error) {
       console.error(error);
     }
@@ -83,7 +89,7 @@ const UserList: React.FC = () => {
           <Avatar src={record.pictureUrl} icon={<UserOutlined />} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontWeight: 'bold' }}>{record.displayName || '未知用戶'}</span>
-            <span style={{ fontSize: '12px', color: '#888' }}>{record.lineUserId}</span>
+            <code style={{ fontSize: '10px', color: '#aaa' }}>{record.lineUserId}</code>
           </div>
         </Space>
       ),
@@ -92,6 +98,7 @@ const UserList: React.FC = () => {
       title: '狀態',
       dataIndex: 'status',
       key: 'status',
+      width: 100,
       render: (status) => (
         <Tag color={status === 'ENABLE' ? 'success' : 'error'}>
           {status === 'ENABLE' ? '正常' : '停用'}
@@ -99,16 +106,37 @@ const UserList: React.FC = () => {
       ),
     },
     {
-      title: '每日額度 (剩餘)',
+      title: '今日對話額度',
       dataIndex: 'dailyQuota',
       key: 'dailyQuota',
-      render: (val) => <Tag color="blue">{val} / 10</Tag>,
+      width: 180,
+      render: (val) => (
+        <div style={{ width: 120 }}>
+          <Progress 
+            percent={(val / 10) * 100} 
+            size="small" 
+            format={() => `${val}/10`} 
+            status={val === 0 ? 'exception' : 'active'}
+          />
+        </div>
+      ),
     },
     {
-      title: '每月額度 (剩餘)',
+      title: '每月推播額度',
       dataIndex: 'monthlyQuota',
       key: 'monthlyQuota',
-      render: (val) => <Tag color="purple">{val} / 5</Tag>,
+      width: 180,
+      render: (val) => (
+        <div style={{ width: 120 }}>
+          <Progress 
+            percent={(val / 5) * 100} 
+            size="small" 
+            strokeColor="#722ed1"
+            format={() => `${val}/5`} 
+            status={val === 0 ? 'exception' : 'active'}
+          />
+        </div>
+      ),
     },
     {
       title: '最後活躍',
@@ -119,6 +147,7 @@ const UserList: React.FC = () => {
     {
       title: '操作',
       key: 'action',
+      width: 120,
       render: (_, record) => (
         <Space size="middle">
           <Tooltip title="調整額度">
@@ -132,7 +161,8 @@ const UserList: React.FC = () => {
           <Tooltip title={record.status === 'ENABLE' ? "停用帳號" : "啟用帳號"}>
             <Button 
               danger={record.status === 'ENABLE'}
-              type="default" // 若要顯示綠色啟用按鈕，可用 style 或 class
+              type={record.status === 'ENABLE' ? "default" : "primary"}
+              style={record.status === 'DISABLE' ? { backgroundColor: '#52c41a' } : {}}
               shape="circle" 
               icon={record.status === 'ENABLE' ? <StopOutlined /> : <CheckCircleOutlined />} 
               onClick={() => handleStatusChange(record)}
@@ -145,9 +175,18 @@ const UserList: React.FC = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>使用者管理</h2>
-        <Button onClick={() => fetchUsers(currentPage)}>重新整理</Button>
+        <Space>
+          <Search
+            placeholder="搜尋姓名或 Line ID"
+            allowClear
+            onSearch={onSearch}
+            style={{ width: 300 }}
+            enterButton
+          />
+          <Button icon={<SearchOutlined />} onClick={() => fetchUsers(currentPage, keyword)}>重新整理</Button>
+        </Space>
       </div>
       
       <Table 
@@ -155,11 +194,12 @@ const UserList: React.FC = () => {
         dataSource={users} 
         rowKey="lineUserId"
         loading={loading}
+        scroll={{ x: 800 }} // 響應式滾動
         pagination={{
           current: currentPage,
           pageSize: 10,
           total: total,
-          onChange: (page) => fetchUsers(page),
+          onChange: (page) => fetchUsers(page, keyword),
         }}
       />
 
@@ -194,3 +234,4 @@ const UserList: React.FC = () => {
 };
 
 export default UserList;
+
