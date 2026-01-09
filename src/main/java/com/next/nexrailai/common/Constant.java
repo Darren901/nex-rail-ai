@@ -11,6 +11,7 @@ public class Constant {
         TDX_TOKEN_ERROR         ("E001", "無法取得 TDX Token"),
         FROM_STATION_NOT_FOUND  ("E002", "找不到起點站"),
         TO_STATION_NOT_FOUND    ("E003", "找不到終點站"),
+        MONTHLY_QUOTA_EXCEEDED  ("E004", "建立失敗：您本月的提醒/監控額度已達上限 (5/5)。請下個月再試。")
         ;
 
 

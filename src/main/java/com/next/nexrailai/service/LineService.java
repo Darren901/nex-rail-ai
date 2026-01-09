@@ -53,14 +53,13 @@ public class LineService {
         // 1. 檢查額度
         if (!rateLimitService.tryConsume(userId)) {
             reply(replyToken, new TextMessage
-                    .Builder("$ 今日訊息額度已用完 (10/10) \n請明天再來，或升級您的方案 (其實是請開發者喝咖啡 $)")
+                    .Builder("$ 今日訊息額度已用完 (0/10) \n請明天再來，或升級您的方案 (其實是請開發者喝咖啡 $)")
                     .emojis(List.of(
                             new Emoji(0, "670e0cce840a8236ddd4ee4c", "065"),
-                            new Emoji(47, "670e0cce840a8236ddd4ee4c", "142")
+                            new Emoji(46, "670e0cce840a8236ddd4ee4c", "142")
                     )).build());
             return;
         }
-
 
         // 2. 顯示 Loading 動畫
         showLoading(userId);
@@ -96,6 +95,10 @@ public class LineService {
             case "/memory/list" -> {
                 List<UserMemory> memories = userMemoryService.getMemoriesByUser(userId);
                 replyMessage = FlexMessageUtil.createMemoryListBubble(memories);
+            }
+            case "/reset" -> {
+                aiService.clearMemory(userId);
+                replyMessage = new TextMessage("🧹 記憶體已清除！我現在忘記了我們之前的對話。\n請重新詢問您的問題。");
             }
             default -> replyMessage = new TextMessage("未知的指令：" + command);
         }
@@ -159,7 +162,8 @@ public class LineService {
                 return FlexMessageUtil.createTimetableCarousel(
                         searchResult.getTrains(),
                         searchResult.getOrigin(),
-                        searchResult.getDestination()
+                        searchResult.getDestination(),
+                        searchResult.getTrainDate()
                 );
             }
         }

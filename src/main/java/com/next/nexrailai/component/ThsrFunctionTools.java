@@ -1,5 +1,6 @@
 package com.next.nexrailai.component;
 
+import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.config.PromptConfig;
 import com.next.nexrailai.context.ThsrContextHolder;
 import com.next.nexrailai.dto.ThsrSummaryDTO;
@@ -35,6 +36,8 @@ public class ThsrFunctionTools {
                         scheduleService.createReminder(chatId, triggerTime, req.content());
                         
                         return "已成功設定提醒！將在 " + req.triggerTime() + " 提醒您：" + req.content();
+                    } catch (ApBusinessException e){
+                        return e.getMessage();
                     } catch (Exception e) {
                         return "設定提醒失敗，時間格式錯誤。請確保格式為 YYYY-MM-DD HH:mm:ss";
                     }
@@ -59,6 +62,8 @@ public class ThsrFunctionTools {
                         scheduleService.createTicketMonitor(chatId, startTime, searchRequest);
                         
                         return "已設定搶票監控任務！\n起始時間: " + req.startTime() + "\n監控班次: " + req.date() + " " + (req.time() != null ? req.time() : "") + " " + req.from() + " -> " + req.to() + "\n如果發現有位子，我會立刻通知您！";
+                    } catch (ApBusinessException e){
+                        return e.getMessage();
                     } catch (Exception e) {
                         return "設定監控失敗，時間格式錯誤。";
                     }
@@ -119,6 +124,7 @@ public class ThsrFunctionTools {
                             .trains(results)
                             .origin(req.from())
                             .destination(req.to())
+                            .trainDate(req.date())
                             .build());
                             
                     return results;

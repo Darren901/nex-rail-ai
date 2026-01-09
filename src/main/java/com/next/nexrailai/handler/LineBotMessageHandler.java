@@ -42,7 +42,7 @@ public class LineBotMessageHandler {
 
     @EventMapping
     public void handleFollowEvent(FollowEvent event) {
-        String userId = event.source().userId();
+        final String userId = event.source().userId();
         log.info(">>>> [LINE Handler] 偵測到 Follow 事件 UserId: {}", userId);
 
         UserProfileResponse profile = lineService.getUserProfile(userId);
@@ -54,7 +54,7 @@ public class LineBotMessageHandler {
 
     @EventMapping
     public void handleUnfollowEvent(UnfollowEvent event) {
-        String userId = event.source().userId();
+        final String userId = event.source().userId();
         log.info(">>>> [LINE Handler] 偵測到 Unfollow 事件 UserId: {}", userId);
 
         appUserService.setUserDisable(userId);

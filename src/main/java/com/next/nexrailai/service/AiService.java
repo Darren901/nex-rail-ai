@@ -20,13 +20,27 @@ public class AiService {
     private final ChatClient chatClient;
     private final PromptConfig promptConfig;
     private final ThsrFunctionTools thsrFunctionTools;
+    private final RateLimitService rateLimitService;
+    private final ChatMemory chatMemory;
+
+    public void clearMemory(String chatId) {
+        chatMemory.clear(chatId);
+        log.info(">>>> [AI Service] Memory cleared for user: {}", chatId);
+    }
 
     public String chat(String chatId, String message){
         try{
+            int dailyQuota = rateLimitService.getRemainingQuota(chatId);
+            int monthlyQuota = rateLimitService.getRemainingMonthlyQuota(chatId);
+            
+            log.info(">>>> [AI Context] User: {}, Daily: {}, Monthly: {}", chatId, dailyQuota, monthlyQuota);
+
             return chatClient.prompt()
                     .system(sp -> sp.text(promptConfig.getSystem().get("text"))
                             .param("today", LocalDate.now().toString())
-                            .param("current_time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+                            .param("current_time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                            .param("daily_quota", String.valueOf(dailyQuota))
+                            .param("monthly_quota", String.valueOf(monthlyQuota)))
                     .user(message)
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
                     .toolCallbacks(
@@ -41,7 +55,7 @@ public class AiService {
                     .content();
         }catch (Exception e){
             log.error(">>>> [AI 異常] : {}", e.getMessage(), e);
-            return "抱歉，我的大腦抽筋了，請稍後再試。";
+            return "哎呀 我的大腦抽筋了 \uD83E\uDD16⚡ 請稍後再試～";
         }
     }
 }

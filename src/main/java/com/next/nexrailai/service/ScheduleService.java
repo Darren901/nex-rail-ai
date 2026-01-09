@@ -4,6 +4,8 @@ import com.linecorp.bot.messaging.client.MessagingApiClient;
 import com.linecorp.bot.messaging.model.Message;
 import com.linecorp.bot.messaging.model.PushMessageRequest;
 import com.linecorp.bot.messaging.model.TextMessage;
+import com.next.nexrailai.common.ApBusinessException;
+import com.next.nexrailai.common.Constant;
 import com.next.nexrailai.dto.ThsrSummaryDTO;
 import com.next.nexrailai.dto.ai.SearchRequest;
 import com.next.nexrailai.jpa.entity.ScheduleTask;
@@ -33,12 +35,17 @@ public class ScheduleService {
     private final ScheduleTaskRepository repository;
     private final MessagingApiClient messagingApiClient;
     private final ThsrTicketService ticketService;
+    private final RateLimitService rateLimitService;
 
     /**
      * 新增一般提醒任務
      */
     @Transactional
     public ScheduleTask createReminder(String userId, LocalDateTime triggerTime, String content) {
+        if (!rateLimitService.tryConsumeMonthlyNotification(userId)) {
+            throw new ApBusinessException(Constant.RCODE.MONTHLY_QUOTA_EXCEEDED);
+        }
+
         ScheduleTask task = ScheduleTask.builder()
                 .userId(userId)
                 .triggerTime(triggerTime)
@@ -54,6 +61,10 @@ public class ScheduleService {
      */
     @Transactional
     public ScheduleTask createTicketMonitor(String userId, LocalDateTime triggerTime, SearchRequest searchRequest) {
+        if (!rateLimitService.tryConsumeMonthlyNotification(userId)) {
+            throw new ApBusinessException(Constant.RCODE.MONTHLY_QUOTA_EXCEEDED);
+        }
+
         String payload;
         try {
             payload = JsonUtil.toJson(searchRequest);
@@ -118,7 +129,7 @@ public class ScheduleService {
             try {
                 executeTask(task);
             } catch (Exception e) {
-                log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e);
+                log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e.getMessage());
                 task.setStatus(ScheduleTask.TaskStatus.FAILED);
             }
         }
@@ -144,6 +155,16 @@ public class ScheduleService {
     private void handleTicketMonitor(ScheduleTask task) {
         try {
             SearchRequest request = JsonUtil.fromJson(task.getPayload(), SearchRequest.class);
+            
+            // 1. 檢查是否過期
+            if(isExpire(request, task)){
+                String msg = String.format("🛑 監控結束通知\n\n很抱歉，直到發車時間 (%s %s) 前，系統都未能為您監控到符合條件的座位。\n\n任務已自動結束。",
+                        request.date(), request.time() != null ? request.time() : "全天");
+
+                pushMessage(task.getUserId(), new TextMessage(msg));
+                task.setStatus(ScheduleTask.TaskStatus.EXPIRED);
+            }
+
             List<ThsrSummaryDTO> trains = ticketService.searchTickets(request);
 
             // 檢查是否有位子
@@ -193,10 +214,30 @@ public class ScheduleService {
         }
     }
 
+    private boolean isExpire(SearchRequest request, ScheduleTask task){
+        String timeStr = request.time() != null ? request.time() : "23:59";
+        // 如果只有 HH:mm，補上 :00 變成 HH:mm:00 以符合 ISO 格式，或者直接 parse
+        if (timeStr.length() == 5) timeStr += ":00";
+
+        LocalDateTime departureDateTime = LocalDateTime.parse(request.date() + "T" + timeStr);
+
+        // 如果現在時間已經超過發車時間 (加上緩衝 15 分鐘，避免剛好過幾秒就判死刑)
+        if (LocalDateTime.now().isAfter(departureDateTime.plusMinutes(15))) {
+            log.info(">>>> [Schedule] 監控任務 ID: {} 已過期 (發車時間: {})", task.getId(), departureDateTime);
+            return false;
+        }
+        return  true;
+    }
+
     private void pushMessage(String userId, Message message) {
-        messagingApiClient.pushMessage(
-                UUID.randomUUID(),
-                new PushMessageRequest.Builder(userId, List.of(message)).build()
-        ).join();
+        try {
+            messagingApiClient.pushMessage(
+                    UUID.randomUUID(),
+                    new PushMessageRequest.Builder(userId, List.of(message)).build()
+            ).join();
+        } catch (Exception e) {
+            log.error(">>>> [Schedule] Push Message Failed for User: {}", userId, e);
+            throw new RuntimeException("Failed to push message", e);
+        }
     }
 }

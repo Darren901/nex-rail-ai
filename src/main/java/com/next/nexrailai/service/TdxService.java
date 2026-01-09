@@ -197,13 +197,13 @@ public class TdxService {
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<ThsrFareDTO>>() {});
 
-            log.debug(">>>>> [TDX Fares Result]: {}", JsonUtil.prettyJson(fares));
+            log.debug(">>>>> [TDX 查詢] Fares Result: {}", JsonUtil.prettyJson(fares));
 
             if (fares != null && !fares.isEmpty()) {
                 // 3. 成功獲取後，寫入 Redis 快取，設定 24 小時過期
                 try {
                     String jsonToCache = JsonUtil.toJson(fares);
-                    redisTemplate.opsForValue().set(redisKey, jsonToCache, Duration.ofHours(24));
+                    redisTemplate.opsForValue().set(redisKey, jsonToCache, Duration.ofDays(31));
                     log.info(">>>> [TDX 查詢] 已將票價結果寫入 Redis 快取。");
                 } catch (Exception e) {
                     log.error(">>>> [Redis] 寫入票價快取失敗", e);

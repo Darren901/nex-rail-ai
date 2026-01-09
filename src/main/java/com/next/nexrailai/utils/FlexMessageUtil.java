@@ -158,9 +158,9 @@ public class FlexMessageUtil {
     /**
      * 將高鐵班次列表轉換為 LINE Flex Carousel 訊息
      */
-    public static FlexMessage createTimetableCarousel(List<ThsrSummaryDTO> trains, String origin, String destination) {
+    public static FlexMessage createTimetableCarousel(List<ThsrSummaryDTO> trains, String origin, String destination, String trainDate) {
         List<FlexBubble> bubbles = trains.stream()
-                .map(train -> createTrainBubble(train, origin, destination))
+                .map(train -> createTrainBubble(train, origin, destination, trainDate))
                 .collect(Collectors.toList());
 
         FlexCarousel carousel = new FlexCarousel(bubbles);
@@ -168,7 +168,7 @@ public class FlexMessageUtil {
         return new FlexMessage("高鐵時刻表查詢結果", carousel);
     }
 
-    private static FlexBubble createTrainBubble(ThsrSummaryDTO train, String origin, String destination) {
+    private static FlexBubble createTrainBubble(ThsrSummaryDTO train, String origin, String destination, String trainDate) {
         // Header: 車次號碼
         FlexBox header = new FlexBox.Builder(FlexBox.Layout.VERTICAL, List.of(
                 new FlexText.Builder()
@@ -189,6 +189,11 @@ public class FlexMessageUtil {
                         new FlexText.Builder().text("➔").gravity(FlexText.Gravity.CENTER).align(FlexText.Align.CENTER).size("sm").color("#aaaaaa").build(),
                         new FlexText.Builder().text(destination).size("xl").weight(FlexText.Weight.BOLD).flex(0).build()
                 )).build(),
+
+                // 日期 Row
+                new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(
+                        new FlexText.Builder().text(trainDate).size("xs").color("#888888").build()
+                )).margin("sm").build(),
 
                 // 時間 Row
                 new FlexBox.Builder(FlexBox.Layout.HORIZONTAL, List.of(

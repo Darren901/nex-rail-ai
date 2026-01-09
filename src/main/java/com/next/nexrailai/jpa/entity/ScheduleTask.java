@@ -61,7 +61,8 @@ public class ScheduleTask {
         EXECUTED,
         COMPLETED, // 任務完成 (例如監控到有票)
         CANCELLED,
-        FAILED
+        FAILED,
+        EXPIRED    // 任務過期 (例如已過發車時間)
     }
 
     public enum TaskType {
