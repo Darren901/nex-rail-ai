@@ -25,7 +25,7 @@ public class AppUser {
     @Builder.Default
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private UserStatus status = UserStatus.ENABLE;
+    private UserStatus status = UserStatus.PENDING;
 
     private String pictureUrl;
 
@@ -36,6 +36,7 @@ public class AppUser {
 
     public enum UserStatus{
         ENABLE,
-        DISABLE
+        DISABLE,
+        PENDING
     }
 }

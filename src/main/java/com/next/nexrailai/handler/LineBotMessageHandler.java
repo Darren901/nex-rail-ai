@@ -8,8 +8,10 @@ import com.linecorp.bot.webhook.model.MessageEvent;
 import com.linecorp.bot.webhook.model.TextMessageContent;
 import com.linecorp.bot.webhook.model.UnfollowEvent;
 import com.linecorp.bot.webhook.model.PostbackEvent;
+import com.next.nexrailai.jpa.entity.AppUser;
 import com.next.nexrailai.jpa.service.AppUserService;
 import com.next.nexrailai.service.LineService;
+import com.next.nexrailai.service.SystemConfigService;
 import com.next.nexrailai.utils.JsonUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,14 +24,29 @@ public class LineBotMessageHandler {
 
     private final AppUserService appUserService;
     private final LineService lineService;
+    private final SystemConfigService systemConfigService;
 
     @EventMapping
     public void handleTextMessageEvent(MessageEvent event) {
         log.debug(">>>>> [LINE Handler] Message event: {}", JsonUtil.prettyJson(event));
 
+        final String userId = event.source().userId();
+        
+        // 檢查使用者狀態
+        var status = appUserService.getUserStatus(userId);
+
+        if (status == AppUser.UserStatus.PENDING) {
+            lineService.replyText(event.replyToken(),
+                    "⚠️ 您的帳號正在審核中\n\n為了確保服務品質，我們採取實名制審核。管理員將在確認後開通您的權限");
+            return;
+        } else if (status == AppUser.UserStatus.DISABLE) {
+            lineService.replyText(event.replyToken(),
+                    "⛔ 您的帳號已被停用\n\n為了確保服務品質，請聯絡管理員協助啟用您的帳號。");
+            return;
+        }
+
         final String originalMessageText = ((TextMessageContent) event.message()).text();
         log.info(">>>>> [LINE Handler] Received message: [{}]", originalMessageText);
-        final String userId = event.source().userId();
 
         appUserService.setUserActiveAt(userId);
         lineService.handleUserMessage(userId, originalMessageText, event.replyToken());
@@ -51,6 +68,8 @@ public class LineBotMessageHandler {
 
         if (profile != null) {
             appUserService.saveOrUpdateUser(profile);
+            String welcomeMsg = systemConfigService.get("welcome_message");
+            lineService.replyText(event.replyToken(), welcomeMsg);
         }
     }
 

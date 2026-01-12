@@ -80,7 +80,7 @@ public class TdxService {
                             .build())
                             .toList();
 
-            // 4. 儲存到 PostgreSQL
+            // 4. 儲存到 DB
             stationRepo.saveAll(entities);
 
             log.info(">>>> [TDX 同步] 成功！共同步 {} 個車站", entities.size());
@@ -200,7 +200,6 @@ public class TdxService {
             log.debug(">>>>> [TDX 查詢] Fares Result: {}", JsonUtil.prettyJson(fares));
 
             if (fares != null && !fares.isEmpty()) {
-                // 3. 成功獲取後，寫入 Redis 快取，設定 24 小時過期
                 try {
                     String jsonToCache = JsonUtil.toJson(fares);
                     redisTemplate.opsForValue().set(redisKey, jsonToCache, Duration.ofDays(31));

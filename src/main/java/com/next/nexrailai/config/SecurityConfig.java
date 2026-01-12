@@ -23,6 +23,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -30,6 +33,9 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -37,15 +43,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. 放行 LINE Bot Webhook
+                        // 放行 LINE Bot Webhook
                         .requestMatchers("/callback", "/callback/**").permitAll()
-                        // 2. 放行 LINE Bot 相關 redirect (如果有的話)
+                        // 放行 LINE Bot 相關 redirect
                         .requestMatchers("/api/redirect").permitAll()
-                        // 3. 放行 Admin 登入 API
+                        // 放行 Admin 登入 API
                         .requestMatchers("/api/auth/**").permitAll()
-                        // 4. 放行靜態資源 (如果有)
+                        // 放行靜態資源
                         .requestMatchers("/", "/index.html", "/static/**", "/*.ico", "/*.json", "/*.png").permitAll()
-                        // 5. 其他 API 需要驗證 (例如 /api/admin/**)
+                        // 其他 API 需要驗證 (例如 /api/admin/**)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -76,7 +82,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000")); // 前端開發位址
+        // 將逗號分隔的字串轉為 List
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

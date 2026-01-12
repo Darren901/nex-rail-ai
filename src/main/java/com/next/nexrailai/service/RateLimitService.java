@@ -15,11 +15,9 @@ import java.time.format.DateTimeFormatter;
 public class RateLimitService {
 
     private final StringRedisTemplate redisTemplate;
+    private final SystemConfigService systemConfigService;
     
-    private static final int DAILY_QUOTA = 10;
     private static final String KEY_PREFIX = "rate_limit:quota:";
-    
-    private static final int MONTHLY_NOTIFICATION_QUOTA = 5;
     private static final String MONTHLY_KEY_PREFIX = "rate_limit:monthly_notify:";
 
     /**
@@ -28,11 +26,12 @@ public class RateLimitService {
      */
     public boolean tryConsume(String userId) {
         String key = getKey(userId);
+        int dailyQuota = systemConfigService.getInt("daily_message_limit");
         
-        // 1. 如果 Key 不存在，初始化為 DAILY_QUOTA，並設定過期時間 (到明天 00:00)
-        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(DAILY_QUOTA), Duration.ofDays(1));
+        // 如果 Key 不存在，初始化為 dailyQuota，並設定過期時間 (到明天 00:00)
+        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(dailyQuota), Duration.ofDays(1));
         
-        // 2. 執行 DECR
+        // 執行 DECR
         Long remaining = redisTemplate.opsForValue().decrement(key);
         
         if (remaining != null && remaining >= 0) {
@@ -52,9 +51,10 @@ public class RateLimitService {
      */
     public boolean tryConsumeMonthlyNotification(String userId) {
         String key = getMonthlyKey(userId);
+        int monthlyQuota = systemConfigService.getInt("monthly_broadcast_limit");
 
         // 初始化每月額度，設定過期時間 32 天 (確保跨月自動過期)
-        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(MONTHLY_NOTIFICATION_QUOTA), Duration.ofDays(32));
+        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(monthlyQuota), Duration.ofDays(32));
 
         Long remaining = redisTemplate.opsForValue().decrement(key);
 
@@ -75,7 +75,7 @@ public class RateLimitService {
         String key = getKey(userId);
         String val = redisTemplate.opsForValue().get(key);
         if (val == null) {
-            return DAILY_QUOTA;
+            return systemConfigService.getInt("daily_message_limit");
         }
         return Math.max(0, Integer.parseInt(val));
     }
@@ -88,23 +88,24 @@ public class RateLimitService {
         String val = redisTemplate.opsForValue().get(key);
         if (val == null) {
             // 如果從未設定過，預設就是滿額
-            return MONTHLY_NOTIFICATION_QUOTA;
+            return systemConfigService.getInt("monthly_broadcast_limit");
         }
         return Math.max(0, Integer.parseInt(val));
     }
     
     /**
-     * (後門) 增加每日額度
+     * 增加每日額度
      */
     public void addQuota(String userId, int amount) {
         String key = getKey(userId);
+        int dailyQuota = systemConfigService.getInt("daily_message_limit");
         // 如果 key 不存在，先初始化再增加
-        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(DAILY_QUOTA), Duration.ofDays(1));
+        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(dailyQuota), Duration.ofDays(1));
         redisTemplate.opsForValue().increment(key, amount);
     }
 
     /**
-     * (後門) 設定每日額度
+     * 設定每日額度
      */
     public void setQuota(String userId, int amount) {
         String key = getKey(userId);
@@ -112,16 +113,17 @@ public class RateLimitService {
     }
 
     /**
-     * (後門) 增加每月額度
+     * 增加每月額度
      */
     public void addMonthlyQuota(String userId, int amount) {
         String key = getMonthlyKey(userId);
-        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(MONTHLY_NOTIFICATION_QUOTA), Duration.ofDays(32));
+        int monthlyQuota = systemConfigService.getInt("monthly_broadcast_limit");
+        redisTemplate.opsForValue().setIfAbsent(key, String.valueOf(monthlyQuota), Duration.ofDays(32));
         redisTemplate.opsForValue().increment(key, amount);
     }
 
     /**
-     * (後門) 設定每月額度
+     * 設定每月額度
      */
     public void setMonthlyQuota(String userId, int amount) {
         String key = getMonthlyKey(userId);

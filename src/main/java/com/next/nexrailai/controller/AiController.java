@@ -33,7 +33,7 @@ public class AiController {
             return aiService.chat(userId, message);
         } catch (Exception e) {
             log.error(">>>> [AI 異常] : {}", e.getMessage(), e);
-            return "抱歉，我的大腦抽筋了，請稍後再試。錯誤訊息：" + e.getMessage();
+            return "抱歉，我的大腦抽筋了，請稍後再試。";
         }
     }
 }

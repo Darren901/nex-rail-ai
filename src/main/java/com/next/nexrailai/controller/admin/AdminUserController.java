@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.next.nexrailai.service.AiService;
+
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class AdminUserController {
 
     private final AppUserRepository userRepository;
     private final RateLimitService rateLimitService;
+    private final AiService aiService;
 
     @GetMapping
     public ResponseEntity<Page<UserDetailResponse>> getUsers(
@@ -28,11 +31,9 @@ public class AdminUserController {
             @RequestParam(required = false) String keyword
     ) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "lastActiveAt"));
-        
-        // 搜尋邏輯 (目前 AppUserRepository 可能還沒實作 search，先回傳全部)
+
         Page<AppUser> userPage = userRepository.findAll(pageRequest);
 
-        // 轉換 Entity -> DTO (並填充額度)
         Page<UserDetailResponse> dtoPage = userPage.map(user -> UserDetailResponse.builder()
                 .lineUserId(user.getLineUserId())
                 .displayName(user.getDisplayName())
@@ -94,6 +95,12 @@ public class AdminUserController {
                 rateLimitService.addMonthlyQuota(userId, request.amount());
             }
         }
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{userId}/memory")
+    public ResponseEntity<Void> deleteUserMemory(@PathVariable String userId) {
+        aiService.clearMemory(userId);
         return ResponseEntity.ok().build();
     }
 }

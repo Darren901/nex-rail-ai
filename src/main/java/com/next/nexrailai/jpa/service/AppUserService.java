@@ -1,7 +1,6 @@
 package com.next.nexrailai.jpa.service;
 
 import com.linecorp.bot.messaging.model.UserProfileResponse;
-import com.next.nexrailai.common.Constant;
 import com.next.nexrailai.jpa.entity.AppUser;
 import com.next.nexrailai.jpa.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +27,7 @@ public class AppUserService {
                     // 使用者已存在，更新資訊
                     user.setDisplayName(profile.displayName());
                     user.setPictureUrl(String.valueOf(profile.pictureUrl()));
+                    user.setStatus(AppUser.UserStatus.PENDING);
                     appUserRepo.save(user);
                     log.info(">>>> [使用者服務] 更新使用者: {} ({})", profile.displayName(), profile.userId());
                 },
@@ -56,6 +56,18 @@ public class AppUserService {
             appUserRepo.save(appUser);
             log.info(">>>> [使用者服務] 使用者使用者傳訊息了！ : ({})", userId);
         });
+    }
+
+    /**
+     * 取得使用者狀態
+     *
+     * @param userId LINE User ID
+     * @return UserStatus
+     */
+    public AppUser.UserStatus getUserStatus(String userId) {
+        return appUserRepo.findById(userId)
+                .map(AppUser::getStatus)
+                .orElse(AppUser.UserStatus.PENDING); // 預設為 PENDING (若找不到使用者)
     }
 
     /**

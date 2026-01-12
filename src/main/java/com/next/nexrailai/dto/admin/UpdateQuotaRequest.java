@@ -11,7 +11,7 @@ public record UpdateQuotaRequest(
     }
     
     public enum QuotaAction {
-        SET, // 直接設定為該數值
+        SET, // 直接設定為該數量
         ADD  // 增加 (或減少，若為負數)
     }
 }

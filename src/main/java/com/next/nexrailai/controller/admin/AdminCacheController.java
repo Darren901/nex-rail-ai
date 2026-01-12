@@ -27,13 +27,15 @@ public class AdminCacheController {
         long token = countKeys("tdx:access_token");
         long timetable = countKeys("tdx:timetable:*");
         long fares = countKeys("tdx:fares:*");
+        long config = countKeys("system:config:*");
 
         stats.put("dailyQuotaKeys", dailyQuota);
         stats.put("monthlyNotifyKeys", monthlyNotify);
         stats.put("tokenKeys", token);
         stats.put("timetableKeys", timetable);
         stats.put("fareKeys", fares);
-        stats.put("totalKeys", dailyQuota + monthlyNotify + token + timetable + fares);
+        stats.put("configKeys", config);
+        stats.put("totalKeys", dailyQuota + monthlyNotify + token + timetable + fares + config);
         
         return ResponseEntity.ok(stats);
     }
@@ -55,6 +57,7 @@ public class AdminCacheController {
             case "FARES" -> "tdx:fares:*";
             case "DAILY_QUOTA" -> "rate_limit:quota:*";
             case "MONTHLY_NOTIFY" -> "rate_limit:monthly_notify:*";
+            case "CONFIG" -> "system:config:*";
             default -> null;
         };
 

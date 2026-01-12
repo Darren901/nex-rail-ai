@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -96,10 +97,6 @@ public class LineService {
                 List<UserMemory> memories = userMemoryService.getMemoriesByUser(userId);
                 replyMessage = FlexMessageUtil.createMemoryListBubble(memories);
             }
-            case "/reset" -> {
-                aiService.clearMemory(userId);
-                replyMessage = new TextMessage("🧹 記憶體已清除！我現在忘記了我們之前的對話。\n請重新詢問您的問題。");
-            }
             default -> replyMessage = new TextMessage("未知的指令：" + command);
         }
 
@@ -129,11 +126,11 @@ public class LineService {
         } else if ("use_memory".equals(action)) {
             // 使用記憶：提取記憶內容並交給 AI
             userMemoryService.getMemory(id, userId).ifPresent(m -> {
-                // 這裡我們直接把記憶的內容 (JSON) 丟給 AI，並附上一個 Prompt
+                // 這裡把記憶的內容丟給 AI，並附上一個 Prompt
                 String aiMessage = "請根據我儲存的行程資訊幫我查詢班次：" + m.getMemoryValue();
                 handleUserMessage(userId, aiMessage, replyToken);
             });
-            return; // handleUserMessage 會處理 reply
+            return;
         }
 
         reply(replyToken, new TextMessage(resultText));
@@ -178,6 +175,10 @@ public class LineService {
         }
     }
 
+    public void replyText(String replyToken, String text) {
+        reply(replyToken, new TextMessage(text));
+    }
+
     private void reply(String replyToken, Message message) {
         try {
             messagingApiClient.replyMessage(new ReplyMessageRequest.Builder(replyToken, List.of(message)).build()).join();
@@ -186,10 +187,26 @@ public class LineService {
         }
     }
 
+    public void sendMulticast(List<String> userIds, String message) {
+        if (userIds == null || userIds.isEmpty()) return;
+
+        try {
+            // LINE Multicast API Limit: 500 users per request
+            messagingApiClient.multicast(
+                    UUID.randomUUID(),
+                    new MulticastRequest.Builder(List.of(new TextMessage(message)),userIds).build()
+            ).join();
+            log.info(">>>> [LINE Service] 已發送群播訊息給 {} 位使用者", userIds.size());
+        } catch (Exception e) {
+            log.error(">>>> [LINE Service] 群播失敗: {}", e.getMessage(), e);
+            throw new RuntimeException("群播失敗: " + e.getMessage());
+        }
+    }
+
     private boolean isPriceInquiry(String text) {
         List<String> priceKeywords = List.of(
                 "票價", "多少錢", "費用", "價格", "售價",
-                "法優", // 特殊案例
+                "法優",
                 "全票", "半票", "優待票", "兒童票", "敬老票", "愛心票", "軍警票", "學生"
         );
         return priceKeywords.stream().anyMatch(text::contains);

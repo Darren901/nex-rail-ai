@@ -36,6 +36,7 @@ public class ScheduleService {
     private final MessagingApiClient messagingApiClient;
     private final ThsrTicketService ticketService;
     private final RateLimitService rateLimitService;
+    private final SystemConfigService systemConfigService;
 
     /**
      * 新增一般提醒任務
@@ -130,10 +131,11 @@ public class ScheduleService {
                 executeTask(task);
             } catch (Exception e) {
                 log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e.getMessage());
-                task.setStatus(ScheduleTask.TaskStatus.FAILED);
+                // 失敗重試：5 分鐘後
+                task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
             }
         }
-        repository.saveAll(tasks); // 批次更新狀態
+        repository.saveAll(tasks); 
     }
 
     private void executeTask(ScheduleTask task) {
@@ -156,13 +158,14 @@ public class ScheduleService {
         try {
             SearchRequest request = JsonUtil.fromJson(task.getPayload(), SearchRequest.class);
             
-            // 1. 檢查是否過期
-            if(isExpire(request, task)){
+            // 檢查是否過期
+            if (isExpired(request, task)) {
                 String msg = String.format("🛑 監控結束通知\n\n很抱歉，直到發車時間 (%s %s) 前，系統都未能為您監控到符合條件的座位。\n\n任務已自動結束。",
                         request.date(), request.time() != null ? request.time() : "全天");
 
                 pushMessage(task.getUserId(), new TextMessage(msg));
                 task.setStatus(ScheduleTask.TaskStatus.EXPIRED);
+                return;
             }
 
             List<ThsrSummaryDTO> trains = ticketService.searchTickets(request);
@@ -175,10 +178,8 @@ public class ScheduleService {
             if (!availableTrains.isEmpty()) {
                 log.info(">>>> [Schedule] 監控任務 ID: {} 發現有票！發送通知並結束任務。", task.getId());
                 
-                // 取第一班有位子的車次
                 ThsrSummaryDTO targetTrain = availableTrains.getFirst();
                 
-                // 產生 Deep Link
                 String link = ticketService.generateDeepLink(
                         request.from(), 
                         request.to(), 
@@ -187,7 +188,6 @@ public class ScheduleService {
                         targetTrain.trainNo()
                 );
                 
-                // 產生 Booking Confirmation Flex Message
                 Message flex = FlexMessageUtil.createBookingConfirmationBubble(
                         baseUrl,
                         link,
@@ -201,32 +201,31 @@ public class ScheduleService {
 
                 task.setStatus(ScheduleTask.TaskStatus.COMPLETED);
             } else {
-                log.info(">>>> [Schedule] 監控任務 ID: {} 目前仍無票，延後 10 分鐘再試。", task.getId());
-                // 延後 10 分鐘
-                task.setTriggerTime(LocalDateTime.now().plusMinutes(10));
-                // 狀態保持 PENDING
+                int intervalSeconds = systemConfigService.getInt("ticket_monitor_interval_seconds");
+                if (intervalSeconds <= 0) intervalSeconds = 60; 
+                
+                log.info(">>>> [Schedule] 監控任務 ID: {} 目前仍無票，延後 {} 秒再試。", task.getId(), intervalSeconds);
+                
+                task.setTriggerTime(LocalDateTime.now().plusSeconds(intervalSeconds));
             }
 
         } catch (Exception e) {
             log.error(">>>> [Schedule] 查票失敗", e);
-            // 查票失敗也延後重試，避免一直死循環
-            task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
+            task.setTriggerTime(LocalDateTime.now().plusSeconds(60));
         }
     }
 
-    private boolean isExpire(SearchRequest request, ScheduleTask task){
+    private boolean isExpired(SearchRequest request, ScheduleTask task){
         String timeStr = request.time() != null ? request.time() : "23:59";
-        // 如果只有 HH:mm，補上 :00 變成 HH:mm:00 以符合 ISO 格式，或者直接 parse
         if (timeStr.length() == 5) timeStr += ":00";
 
         LocalDateTime departureDateTime = LocalDateTime.parse(request.date() + "T" + timeStr);
 
-        // 如果現在時間已經超過發車時間 (加上緩衝 15 分鐘，避免剛好過幾秒就判死刑)
-        if (LocalDateTime.now().isAfter(departureDateTime.plusMinutes(15))) {
+        if (LocalDateTime.now().isAfter(departureDateTime)) {
             log.info(">>>> [Schedule] 監控任務 ID: {} 已過期 (發車時間: {})", task.getId(), departureDateTime);
-            return false;
+            return true;
         }
-        return  true;
+        return false;
     }
 
     private void pushMessage(String userId, Message message) {

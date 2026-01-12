@@ -13,7 +13,7 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #001f3f 0%, #0074D9 50%, #7FDBFF 100%);
+            background: linear-gradient(30deg, #001f3f 0%, #0074D9 50%, #7FDBFF 100%);
             color: white;
         }
 
@@ -23,9 +23,15 @@
         }
 
         .icon {
-            font-size: 4rem;
+            display: inline-block;
             margin-bottom: 1rem;
             animation: bounce 1s infinite;
+        }
+
+        .icon img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
         }
 
         h1 {
@@ -73,7 +79,9 @@
 </head>
 <body>
 <div class="container">
-    <div class="icon">🚄</div>
+    <div class="icon">
+        <img th:src="@{/logo.png}" alt="NexRail Logo">
+    </div>
     <h1>正在為您開啟 T-EX 行動購票...</h1>
     <div class="spinner"></div>
     <p>如果沒有自動跳轉，請點擊下方連結</p>
