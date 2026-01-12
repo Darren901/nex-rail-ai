@@ -5,8 +5,8 @@ spring:
     active: dev
   config:
     import:
-      - classpath:application-sensitive.yml
-      - classpath:application-prompts.yml
+      - optional:classpath:application-sensitive.yml
+      - optional:classpath:application-prompts.yml
   # File upload configuration
   servlet:
     multipart:
