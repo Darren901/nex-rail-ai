@@ -275,6 +275,14 @@ public class FlexMessageUtil {
                         .style(FlexButton.Style.PRIMARY)
                         .height(FlexButton.Height.SM)
                         .color("#00B900")
+                        .build(),
+                // 增加提示文字
+                new FlexText.Builder()
+                        .text("💡 本系統資料來自 API，可能存在極短時間差。若跳轉後顯示客滿，請在 APP 中多按幾次查詢按鈕重新整理即可。")
+                        .size("xxs")
+                        .color("#aaaaaa")
+                        .margin("md")
+                        .wrap(true)
                         .build()
         )).spacing("sm").flex(0).build();
 
