@@ -49,6 +49,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/redirect").permitAll()
                         // 放行 Admin 登入 API
                         .requestMatchers("/api/auth/**").permitAll()
+                        // 放行 Health Check
+                        .requestMatchers("/actuator/health").permitAll()
                         // 放行靜態資源
                         .requestMatchers("/", "/index.html", "/static/**", "/*.ico", "/*.json", "/*.png").permitAll()
                         // 其他 API 需要驗證 (例如 /api/admin/**)
