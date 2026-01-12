@@ -1,18 +1,24 @@
 spring:
-  # Database configuration (Neon Serverless)
+  # Database configuration
   datasource:
     driver-class-name: org.postgresql.Driver
-    # Use Environment Variable for Production/Neon URL
     url: ${SPRING_DATASOURCE_URL}
-    username: ${PROD_DB_USER_NAME}
-    password: ${PROD_DB_USER_PASSWORD}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1
       idle-timeout: 300000
       max-lifetime: 600000
   
-  # Disable Docker Compose in Prod
+  # Redis Configuration (Prod)
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+
+  # Disable Docker Compose support in Prod
   docker:
     compose:
       enabled: false
@@ -21,14 +27,14 @@ spring:
   jpa:
     show-sql: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
 # Application Config (Prod)
 app:
-  # 在 Zeabur 部署時，設定 APP_BASE_URL 環境變數
   base-url: ${APP_BASE_URL}
 
 # Logging configuration
-level:
-  root: INFO
-  com.next.nexrailai: INFO
+logging:
+  level:
+    root: INFO
+    com.next.nexrailai: INFO
