@@ -27,3 +27,8 @@ spring:
 app:
   # 在 Zeabur 部署時，設定 APP_BASE_URL 環境變數
   base-url: ${APP_BASE_URL}
+
+# Logging configuration
+level:
+  root: INFO
+  com.next.nexrailai: INFO
