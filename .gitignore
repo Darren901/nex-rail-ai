@@ -40,4 +40,5 @@ postgres-data/
 .gemini/
 gha-creds-*.json
 Admin-API-Spec.md
+logs
 

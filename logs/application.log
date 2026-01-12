@@ -467,3 +467,7 @@
 2026-01-12T10:46:44.745+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : 時刻表 Cache 數量: 0
 2026-01-12T10:46:44.745+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : 票價 Cache 數量: 3
 2026-01-12T10:46:44.745+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : =====================
+2026-01-12T10:51:44.741+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : ===== Cache 統計 =====
+2026-01-12T10:51:44.741+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : 時刻表 Cache 數量: 0
+2026-01-12T10:51:44.741+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : 票價 Cache 數量: 3
+2026-01-12T10:51:44.741+08:00  INFO 28534 --- [NexRailAI] [scheduling-1] c.next.nexrailai.scheduled.CacheMonitor  : =====================
