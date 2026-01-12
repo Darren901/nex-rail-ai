@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -209,9 +210,18 @@ public class ScheduleService {
                 task.setTriggerTime(LocalDateTime.now().plusSeconds(intervalSeconds));
             }
 
+        } catch (HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            if (responseBody.contains("無提供查詢超過供應日期的資料")) {
+                log.warn(">>>> [Schedule] 監控任務 ID: {} 查詢日期尚未開放，將延後 1 天再試。", task.getId());
+                task.setTriggerTime(LocalDateTime.now().plusDays(1));
+            } else {
+                log.error(">>>> [Schedule] 查票失敗 (HTTP {}): {}", e.getStatusCode(), responseBody);
+                task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
+            }
         } catch (Exception e) {
             log.error(">>>> [Schedule] 查票失敗", e);
-            task.setTriggerTime(LocalDateTime.now().plusSeconds(60));
+            task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
         }
     }
 

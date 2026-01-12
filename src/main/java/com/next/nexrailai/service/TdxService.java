@@ -15,6 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -133,9 +134,12 @@ public class TdxService {
                 }
                 return timeTable;
             }
+            return timeTable;
+        } catch (HttpClientErrorException e) {
+            log.error(">>>> [TDX 查詢] 時刻表查詢失敗 (HTTP {}): {}", e.getStatusCode(), e.getResponseBodyAsString());
             return List.of();
         } catch (Exception e) {
-            log.error(">>>> [TDX 查詢] 失敗: {}", e.getMessage());
+            log.error(">>>> [TDX 查詢] 時刻表查詢失敗: {}", e.getMessage());
             return List.of();
         }
     }
@@ -161,8 +165,11 @@ public class TdxService {
             }
             return List.of();
 
+        } catch (HttpClientErrorException e) {
+            log.error(">>>> [TDX 查詢] 查詢座位失敗 (HTTP {}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return List.of();
         } catch (Exception e) {
-            log.error(">>>> [TDX 查詢] 查詢座位失敗", e);
+            log.error(">>>> [TDX 查詢] 查詢座位失敗: {}", e.getMessage());
             return List.of();
         }
     }
@@ -209,6 +216,9 @@ public class TdxService {
                 }
                 return fares;
             }
+            return List.of();
+        } catch (HttpClientErrorException e) {
+            log.error(">>>> [TDX 查詢] 查詢票價失敗 (HTTP {}): {}", e.getStatusCode(), e.getResponseBodyAsString());
             return List.of();
         } catch (Exception e) {
             log.error(">>>> [TDX 查詢] 查詢票價失敗: {}", e.getMessage());
