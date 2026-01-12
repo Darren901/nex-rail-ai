@@ -22,6 +22,7 @@ app:
   base-url: https://23be455b01ec.ngrok-free.app
 
 # Logging configuration
-level:
-  root: INFO
-  com.next.nexrailai: DEBUG
+logging:
+  level:
+    root: INFO
+    com.next.nexrailai: DEBUG

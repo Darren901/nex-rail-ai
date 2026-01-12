@@ -1,7 +1,6 @@
 package com.next.nexrailai.component;
 
 import com.next.nexrailai.jpa.entity.SystemAdmin;
-import com.next.nexrailai.jpa.repository.StationRepository;
 import com.next.nexrailai.jpa.repository.SystemAdminRepository;
 import com.next.nexrailai.service.TdxService;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +16,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DataInitializer implements CommandLineRunner {
 
-    private final StationRepository stationRepository;
     private final SystemAdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TdxService tdxService;
 
     @Value("${app.admin.username:admin}")
     private String defaultUsername;
@@ -29,7 +28,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // initStations();
+        tdxService.syncThsrStations();
         initAdmin();
     }
 
