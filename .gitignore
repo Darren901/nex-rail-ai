@@ -32,13 +32,17 @@ build/
 ### VS Code ###
 .vscode/
 
+### macOS ###
+.DS_Store
+**/.DS_Store
+
 ### Config ###
 compose.yaml
 application-sensitive.yml
 postgres-data/
+redis-data/
 
 .gemini/
 gha-creds-*.json
 Admin-API-Spec.md
 logs
-
