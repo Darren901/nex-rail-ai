@@ -14,11 +14,22 @@ public class ReminderExecutor implements ScheduleTaskExecutor {
 
     private final LineMessageService lineMessageService;
 
+    /**
+     * Indicates which ScheduleTask.TaskType this executor handles.
+     *
+     * @return ScheduleTask.TaskType.REMINDER
+     */
     @Override
     public ScheduleTask.TaskType getSupportedTaskType() {
         return ScheduleTask.TaskType.REMINDER;
     }
 
+    /**
+     * Execute a reminder task by sending its content to the task's user and marking the task executed.
+     *
+     * @param task the scheduled reminder whose content will be sent to the associated user; the task's status
+     *             will be set to {@link ScheduleTask.TaskStatus#EXECUTED} after sending
+     */
     @Override
     public void execute(ScheduleTask task) {
         log.info(">>>> [ReminderExecutor] Executing reminder for user: {}", task.getUserId());

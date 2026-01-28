@@ -5,12 +5,16 @@ import com.next.nexrailai.jpa.entity.ScheduleTask;
 public interface ScheduleTaskExecutor {
     
     /**
-     * 取得此執行器支援的任務類型
-     */
+ * Identifies the ScheduleTask.TaskType this executor handles.
+ *
+ * @return the {@link ScheduleTask.TaskType} that this executor supports
+ */
     ScheduleTask.TaskType getSupportedTaskType();
 
     /**
-     * 執行任務
-     */
+ * Execute the given scheduled task.
+ *
+ * @param task the scheduled task to execute
+ */
     void execute(ScheduleTask task);
 }

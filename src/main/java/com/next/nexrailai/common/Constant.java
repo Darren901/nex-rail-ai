@@ -22,6 +22,11 @@ public class Constant {
         private final String code;
         private final String message;
 
+        /**
+         * Builds a combined message containing the enum code and its message.
+         *
+         * @return the combined string in the format "code - message"
+         */
         public String getFullMessage() {
             return code + " - " + message;
         }

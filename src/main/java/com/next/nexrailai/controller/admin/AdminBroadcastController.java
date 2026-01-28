@@ -22,7 +22,12 @@ import java.util.List;
 public class AdminBroadcastController {
 
     private final AppUserRepository userRepository;
-    private final LineMessageService lineMessageService; // Changed from LineService
+    private final LineMessageService lineMessageService; /**
+     * Broadcasts the provided message to all enabled users.
+     *
+     * @param request the broadcast request containing the message to send
+     * @return `200 OK` if the message was sent to at least one enabled user; `400 Bad Request` if there are no enabled recipients
+     */
 
     @PostMapping
     public ResponseEntity<Void> sendBroadcast(@RequestBody BroadcastRequest request) {

@@ -104,7 +104,10 @@ public class ScheduleService {
     }
 
     /**
-     * 定時檢查並執行任務
+     * Executes pending scheduled tasks whose trigger time has passed.
+     *
+     * For each task, obtains a ScheduleTaskExecutor from the factory and invokes it. If execution fails,
+     * logs the error and reschedules the task for 5 minutes later. All processed tasks are persisted.
      */
     @Scheduled(fixedRate = 30000)
     public void processScheduledTasks() {
