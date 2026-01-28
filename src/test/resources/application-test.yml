@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+ai:
+  gemini:
+    api-key: test-key
+    project-id: test-project
+  prompts:
+    system:
+      text: "System Prompt"
+
+tdx:
+  client-id: test-id
+  client-secret: test-secret
+
+app:
+  base-url: http://localhost:8080

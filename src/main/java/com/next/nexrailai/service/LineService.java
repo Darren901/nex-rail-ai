@@ -1,6 +1,5 @@
 package com.next.nexrailai.service;
 
-import com.linecorp.bot.messaging.client.MessagingApiClient;
 import com.linecorp.bot.messaging.model.*;
 import com.next.nexrailai.context.ThsrContextHolder;
 import com.next.nexrailai.jpa.entity.ScheduleTask;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -27,25 +25,18 @@ public class LineService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    private final MessagingApiClient messagingApiClient;
+    private final LineMessageService lineMessageService;
     private final AiService aiService;
     private final ScheduleService scheduleService;
     private final UserMemoryService userMemoryService;
     private final RateLimitService rateLimitService;
 
     public UserProfileResponse getUserProfile(String userId) {
-        try {
-            return messagingApiClient.getProfile(userId)
-                    .join()
-                    .body();
-        } catch (Exception e) {
-            log.error(">>>> [LINE Service] 取得使用者檔案失敗: {}", e.getMessage());
-            return null;
-        }
+        return lineMessageService.getUserProfile(userId);
     }
 
     public void handleUserMessage(String userId, String message, String replyToken) {
-        // 0. 指令攔截 (例如 /tasks/reminder) - 指令不扣額度
+        // 0. 指令攔截
         if (message.startsWith("/")) {
             handleCommand(userId, message, replyToken);
             return;
@@ -62,21 +53,21 @@ public class LineService {
             return;
         }
 
-        // 2. 顯示 Loading 動畫
+        // 2. 顯示 Loading
         showLoading(userId);
 
-        // 3. 清空 Context 並 Call AI
+        // 3. AI 處理
         ThsrContextHolder.clear();
         String replyMessage = aiService.chat(userId, message);
         ThsrContextHolder.ThsrSearchResult searchResult = ThsrContextHolder.get();
 
-        // 4. 決定回覆訊息 (Flex or Text)
+        // 4. 決定回覆訊息
         Message messageToSend = decideMessage(replyMessage, message, searchResult);
 
-        // 5. 回覆訊息
+        // 5. 回覆
         reply(replyToken, messageToSend);
 
-        // 6. 清理資源
+        // 6. 清理
         ThsrContextHolder.clear();
     }
 
@@ -105,8 +96,7 @@ public class LineService {
 
     public void handlePostback(String userId, String data, String replyToken) {
         log.info(">>>> [LINE Service] 處理 Postback: {} for User: {}", data, userId);
-        
-        // 解析 data: action=cancel_task&id=123
+
         Map<String, String> params = Stream.of(data.split("&"))
                 .map(s -> s.split("="))
                 .collect(Collectors.toMap(a -> a[0], a -> a.length > 1 ? a[1] : ""));
@@ -115,28 +105,32 @@ public class LineService {
         String idStr = params.get("id");
         Long id = idStr != null ? Long.parseLong(idStr) : null;
 
-        String resultText = "操作成功";
+        String resultText = switch (action) {
+            case "cancel_task" -> {
+                scheduleService.cancelTask(id, userId);
+                yield "已取消該項提醒/監控任務。";
+            }
+            case "delete_memory" -> {
+                userMemoryService.deleteMemory(id, userId);
+                yield "已刪除該項常用行程。";
+            }
+            case "use_memory" -> {
+                userMemoryService.getMemory(id, userId).ifPresent(m -> {
+                    String aiMessage = "請根據我儲存的行程資訊幫我查詢班次：" + m.getMemoryValue();
+                    handleUserMessage(userId, aiMessage, replyToken);
+                });
+                yield null; // 已經在內部處理了，不需要回傳 text
+            }
+            default -> "操作成功";
+        };
 
-        if ("cancel_task".equals(action)) {
-            scheduleService.cancelTask(id, userId);
-            resultText = "已取消該項提醒/監控任務。";
-        } else if ("delete_memory".equals(action)) {
-            userMemoryService.deleteMemory(id, userId);
-            resultText = "已刪除該項常用行程。";
-        } else if ("use_memory".equals(action)) {
-            // 使用記憶：提取記憶內容並交給 AI
-            userMemoryService.getMemory(id, userId).ifPresent(m -> {
-                // 這裡把記憶的內容丟給 AI，並附上一個 Prompt
-                String aiMessage = "請根據我儲存的行程資訊幫我查詢班次：" + m.getMemoryValue();
-                handleUserMessage(userId, aiMessage, replyToken);
-            });
-            return;
+        if (resultText != null) {
+            reply(replyToken, new TextMessage(resultText));
         }
-
-        reply(replyToken, new TextMessage(resultText));
     }
 
     private Message decideMessage(String aiReply, String originalInput, ThsrContextHolder.ThsrSearchResult searchResult) {
+        // 1. 優先檢查是否有訂票連結 (Booking Link)
         if (searchResult != null && searchResult.getBookingLink() != null) {
             return FlexMessageUtil.createBookingConfirmationBubble(
                     baseUrl,
@@ -147,32 +141,37 @@ public class LineService {
                     searchResult.getTrainTime(),
                     searchResult.getTrainNumber()
             );
-        } else if (searchResult != null && searchResult.getTrains() != null && !searchResult.getTrains().isEmpty()) {
+        }
+
+        // 2. 檢查是否有班次資料 (Timetable / Price)
+        if (searchResult != null && searchResult.getTrains() != null && !searchResult.getTrains().isEmpty()) {
+            
+            // 如果是詢問票價
             if (isPriceInquiry(originalInput)) {
-                Message priceFlexMessage = FlexMessageUtil.createPriceInfoBubble(
+                Message priceFlex = FlexMessageUtil.createPriceInfoBubble(
                         searchResult.getOrigin(),
                         searchResult.getDestination(),
                         searchResult.getTrains().getFirst().fares()
                 );
-                return Objects.requireNonNullElseGet(priceFlexMessage, () -> new TextMessage(aiReply));
-            } else {
-                return FlexMessageUtil.createTimetableCarousel(
-                        searchResult.getTrains(),
-                        searchResult.getOrigin(),
-                        searchResult.getDestination(),
-                        searchResult.getTrainDate()
-                );
+                // 如果 Flex 建構失敗 (null)，則 Fallback 回傳 AI 文字
+                return Objects.requireNonNullElseGet(priceFlex, () -> new TextMessage(aiReply));
             }
+            
+            // 一般時刻表查詢
+            return FlexMessageUtil.createTimetableCarousel(
+                    searchResult.getTrains(),
+                    searchResult.getOrigin(),
+                    searchResult.getDestination(),
+                    searchResult.getTrainDate()
+            );
         }
+
+        // 3. 預設：回覆 AI 的純文字內容
         return new TextMessage(aiReply);
     }
 
     private void showLoading(String userId) {
-        try {
-            messagingApiClient.showLoadingAnimation(new ShowLoadingAnimationRequest.Builder(userId).loadingSeconds(20).build()).join();
-        } catch (Exception e) {
-            log.warn(">>>> [LINE Service] Loading 動畫顯示失敗");
-        }
+        lineMessageService.showLoadingAnimation(userId, 20);
     }
 
     public void replyText(String replyToken, String text) {
@@ -180,27 +179,7 @@ public class LineService {
     }
 
     private void reply(String replyToken, Message message) {
-        try {
-            messagingApiClient.replyMessage(new ReplyMessageRequest.Builder(replyToken, List.of(message)).build()).join();
-        } catch (Exception e) {
-            log.error(">>>> [LINE Service] 回覆訊息失敗: {}", e.getMessage(), e);
-        }
-    }
-
-    public void sendMulticast(List<String> userIds, String message) {
-        if (userIds == null || userIds.isEmpty()) return;
-
-        try {
-            // LINE Multicast API Limit: 500 users per request
-            messagingApiClient.multicast(
-                    UUID.randomUUID(),
-                    new MulticastRequest.Builder(List.of(new TextMessage(message)),userIds).build()
-            ).join();
-            log.info(">>>> [LINE Service] 已發送群播訊息給 {} 位使用者", userIds.size());
-        } catch (Exception e) {
-            log.error(">>>> [LINE Service] 群播失敗: {}", e.getMessage(), e);
-            throw new RuntimeException("群播失敗: " + e.getMessage());
-        }
+        lineMessageService.reply(replyToken, message);
     }
 
     private boolean isPriceInquiry(String text) {

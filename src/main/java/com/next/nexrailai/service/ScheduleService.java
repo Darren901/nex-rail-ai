@@ -1,28 +1,21 @@
 package com.next.nexrailai.service;
 
-import com.linecorp.bot.messaging.client.MessagingApiClient;
-import com.linecorp.bot.messaging.model.Message;
-import com.linecorp.bot.messaging.model.PushMessageRequest;
-import com.linecorp.bot.messaging.model.TextMessage;
 import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.common.Constant;
-import com.next.nexrailai.dto.ThsrSummaryDTO;
 import com.next.nexrailai.dto.ai.SearchRequest;
 import com.next.nexrailai.jpa.entity.ScheduleTask;
 import com.next.nexrailai.jpa.repository.ScheduleTaskRepository;
-import com.next.nexrailai.utils.FlexMessageUtil;
+import com.next.nexrailai.scheduled.strategy.ScheduleTaskExecutor;
+import com.next.nexrailai.scheduled.strategy.ScheduleTaskExecutorFactory;
 import com.next.nexrailai.utils.JsonUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,14 +23,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ScheduleService {
 
-    @Value("${app.base-url}")
-    private String baseUrl;
-
     private final ScheduleTaskRepository repository;
-    private final MessagingApiClient messagingApiClient;
-    private final ThsrTicketService ticketService;
     private final RateLimitService rateLimitService;
-    private final SystemConfigService systemConfigService;
+    private final ScheduleTaskExecutorFactory taskExecutorFactory;
 
     /**
      * 新增一般提醒任務
@@ -129,124 +117,14 @@ public class ScheduleService {
 
         for (ScheduleTask task : tasks) {
             try {
-                executeTask(task);
+                ScheduleTaskExecutor executor = taskExecutorFactory.getExecutor(task.getTaskType());
+                executor.execute(task);
             } catch (Exception e) {
-                log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e.getMessage());
+                log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e);
                 // 失敗重試：5 分鐘後
                 task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
             }
         }
-        repository.saveAll(tasks); 
-    }
-
-    private void executeTask(ScheduleTask task) {
-        log.info(">>>> [Schedule] 執行任務 ID: {}, Type: {}", task.getId(), task.getTaskType());
-
-        if (task.getTaskType() == ScheduleTask.TaskType.TICKET_MONITOR) {
-            handleTicketMonitor(task);
-        } else {
-            handleReminder(task);
-        }
-    }
-
-    private void handleReminder(ScheduleTask task) {
-        String message = "⏰ 提醒事項：\n" + task.getContent();
-        pushMessage(task.getUserId(), new TextMessage(message));
-        task.setStatus(ScheduleTask.TaskStatus.EXECUTED);
-    }
-
-    private void handleTicketMonitor(ScheduleTask task) {
-        try {
-            SearchRequest request = JsonUtil.fromJson(task.getPayload(), SearchRequest.class);
-            
-            // 檢查是否過期
-            if (isExpired(request, task)) {
-                String msg = String.format("🛑 監控結束通知\n\n很抱歉，直到發車時間 (%s %s) 前，系統都未能為您監控到符合條件的座位。\n\n任務已自動結束。",
-                        request.date(), request.time() != null ? request.time() : "全天");
-
-                pushMessage(task.getUserId(), new TextMessage(msg));
-                task.setStatus(ScheduleTask.TaskStatus.EXPIRED);
-                return;
-            }
-
-            List<ThsrSummaryDTO> trains = ticketService.searchTickets(request);
-
-            // 檢查是否有位子
-            List<ThsrSummaryDTO> availableTrains = trains.stream()
-                    .filter(t -> !t.standardSeatStatus().contains("客滿"))
-                    .collect(Collectors.toList());
-
-            if (!availableTrains.isEmpty()) {
-                log.info(">>>> [Schedule] 監控任務 ID: {} 發現有票！發送通知並結束任務。", task.getId());
-                
-                ThsrSummaryDTO targetTrain = availableTrains.getFirst();
-                
-                String link = ticketService.generateDeepLink(
-                        request.from(), 
-                        request.to(), 
-                        request.date(), 
-                        targetTrain.departureTime(), 
-                        targetTrain.trainNo()
-                );
-                
-                Message flex = FlexMessageUtil.createBookingConfirmationBubble(
-                        baseUrl,
-                        link,
-                        request.from(),
-                        request.to(),
-                        request.date(),
-                        targetTrain.departureTime(),
-                        targetTrain.trainNo()
-                );
-                pushMessage(task.getUserId(), flex);
-
-                task.setStatus(ScheduleTask.TaskStatus.COMPLETED);
-            } else {
-                int intervalSeconds = systemConfigService.getInt("ticket_monitor_interval_seconds");
-                if (intervalSeconds <= 0) intervalSeconds = 60; 
-                
-                log.info(">>>> [Schedule] 監控任務 ID: {} 目前仍無票，延後 {} 秒再試。", task.getId(), intervalSeconds);
-                
-                task.setTriggerTime(LocalDateTime.now().plusSeconds(intervalSeconds));
-            }
-
-        } catch (HttpClientErrorException e) {
-            String responseBody = e.getResponseBodyAsString();
-            if (responseBody.contains("無提供查詢超過供應日期的資料")) {
-                log.warn(">>>> [Schedule] 監控任務 ID: {} 查詢日期尚未開放，將延後 1 天再試。", task.getId());
-                task.setTriggerTime(LocalDateTime.now().plusDays(1));
-            } else {
-                log.error(">>>> [Schedule] 查票失敗 (HTTP {}): {}", e.getStatusCode(), responseBody);
-                task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
-            }
-        } catch (Exception e) {
-            log.error(">>>> [Schedule] 查票失敗", e);
-            task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
-        }
-    }
-
-    private boolean isExpired(SearchRequest request, ScheduleTask task){
-        String timeStr = request.time() != null ? request.time() : "23:59";
-        if (timeStr.length() == 5) timeStr += ":00";
-
-        LocalDateTime departureDateTime = LocalDateTime.parse(request.date() + "T" + timeStr);
-
-        if (LocalDateTime.now().isAfter(departureDateTime)) {
-            log.info(">>>> [Schedule] 監控任務 ID: {} 已過期 (發車時間: {})", task.getId(), departureDateTime);
-            return true;
-        }
-        return false;
-    }
-
-    private void pushMessage(String userId, Message message) {
-        try {
-            messagingApiClient.pushMessage(
-                    UUID.randomUUID(),
-                    new PushMessageRequest.Builder(userId, List.of(message)).build()
-            ).join();
-        } catch (Exception e) {
-            log.error(">>>> [Schedule] Push Message Failed for User: {}", userId, e);
-            throw new RuntimeException("Failed to push message", e);
-        }
+        repository.saveAll(tasks);
     }
 }
