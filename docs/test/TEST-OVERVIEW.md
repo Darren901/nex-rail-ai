@@ -7,27 +7,21 @@
 
 ## 測試進度表
 
-### 核心服務 (Refactored Components - Priority)
+### 核心服務 (Core Services)
 
 | 模組 | 狀態 | 測試覆蓋率 (估計) | 備註 |
 | --- | --- | --- | --- |
-| `ScheduleService` | ✅ 完成 | 100% (Core) | Strategy delegation verified |
-| `ThsrTicketService` | ✅ 完成 | 90% | Logic verified, missing integration with real API |
-| `LineMessageService` | ✅ 完成 | 100% (Core) | Verified via `LineServiceTest` & Executors |
-| `LineService` | ✅ 完成 | 100% (Core) | `decideMessage`, `handleUserMessage` verified |
-| `Constant` (Enums) | ✅ 完成 | 100% | `EnumUtil` verified |
-| `TicketMonitorExecutor`| ✅ 完成 | 100% | Monitor logic, retry, expire logic verified |
-| `ReminderExecutor` | ✅ 完成 | 100% | Reminder logic verified |
-| `ScheduleTaskExecutorFactory`| ✅ 完成 | 100% | Factory logic verified |
-
-### 其他服務 (Pending)
-
-| 模組 | 狀態 | 備註 |
-| --- | --- | --- |
-| `AiService` | ⚪ 未開始 | |
-| `TdxService` | ⚪ 未開始 | |
-| `RateLimitService` | ⚪ 未開始 | |
-| `SystemConfigService` | ⚪ 未開始 | |
+| `ScheduleService` | ✅ 完成 | 100% | Strategy delegation verified |
+| `ThsrTicketService` | ✅ 完成 | 90% | Logic verified |
+| `LineMessageService` | ✅ 完成 | 100% | Verified via LineServiceTest |
+| `LineService` | ✅ 完成 | 100% | Logic verified |
+| `Constant` (Enums) | ✅ 完成 | 100% | EnumUtil verified |
+| `TicketMonitorExecutor`| ✅ 完成 | 100% | Logic verified |
+| `ReminderExecutor` | ✅ 完成 | 100% | Logic verified |
+| `RateLimitService` | ✅ 完成 | 100% | Redis logic verified |
+| `SystemConfigService` | ✅ 完成 | 100% | Cache logic verified |
+| `TdxService` | ✅ 完成 | 80% | API calling verified (Mock) |
+| `AiService` | ✅ 完成 | 80% | Chat flow verified (Mock) |
 
 ### Controllers (Pending)
 
@@ -52,3 +46,7 @@
 - `ScheduleServiceTest`
 - `ThsrTicketServiceTest`
 - `LineServiceTest`
+- `RateLimitServiceTest`
+- `SystemConfigServiceTest`
+- `TdxServiceTest`
+- `AiServiceTest`
