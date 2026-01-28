@@ -2,7 +2,7 @@
 
 ## 測試環境
 - **資料庫**: H2 (In-memory) - 模擬 PostgreSQL
-- **Mocking**: `WireMock` (模擬 TDX/LINE API), `@MockBean` (模擬部分內部 Bean)
+- **Mocking**: `@MockBean` (模擬內部 Bean) 搭配 Mockito
 - **測試框架**: Spring Boot Test (`@SpringBootTest`, `@AutoConfigureMockMvc`)
 
 ## 測試進度表
@@ -15,7 +15,7 @@
 
 ## 測試規範
 1. **獨立性**: 每個測試類別啟動獨立的 Context 或使用 `@DirtiesContext`。
-2. **外部依賴**: 必須 Mock 所有 HTTP 請求 (TDX, LINE)，不可打真實 API。
+2. **外部依賴**: 必須 Mock 所有外部依賴 (如 TDX, LINE 服務)，避免真實 API 呼叫。
 3. **資料庫**: 使用 H2 記憶體資料庫，每次測試前清空。
 
 ---
