@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,15 +24,16 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,31 +49,30 @@ public class AdminApiIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private AuthenticationManager authenticationManager;
 
-    @MockBean
+    @MockitoBean
     private JwtService jwtService;
 
-    @MockBean
+    @MockitoBean
     private LineMessageService lineMessageService;
 
     @Autowired
     private AppUserRepository appUserRepository;
 
-    @Autowired
+    @MockitoBean
     private SystemConfigService systemConfigService;
 
     @Autowired
     private SystemConfigRepository systemConfigRepository;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
     @BeforeEach
     void setUp() {
         appUserRepository.deleteAll();
-        // systemConfigRepository.deleteAll(); // Don't delete all configs if they are needed for app startup, or seed them
     }
 
     @Test
@@ -123,9 +122,10 @@ public class AdminApiIntegrationTest {
         when(userDetailsService.loadUserByUsername("admin")).thenReturn(adminUser);
 
         // Prepare Target User
-        AppUser user = new AppUser();
-        user.setLineUserId("U123456");
-        user.setStatus(AppUser.UserStatus.ENABLE);
+        AppUser user = AppUser.builder()
+                .lineUserId("U123456")
+                .status(AppUser.UserStatus.ENABLE)
+                .build();
         appUserRepository.save(user);
 
         // Act
@@ -150,8 +150,8 @@ public class AdminApiIntegrationTest {
         when(jwtService.validateToken(eq(token), any())).thenReturn(true);
         when(userDetailsService.loadUserByUsername("admin")).thenReturn(User.withUsername("admin").password("pw").roles("ADMIN").build());
 
-        // Seed initial config
-        systemConfigService.updateConfig(configKey, "initial_value", "desc");
+        // Mock config service behavior since it's mocked
+        when(systemConfigService.get(configKey)).thenReturn("new_value");
 
         // Act
         Map<String, String> payload = Map.of("value", "new_value", "description", "new_desc");
@@ -163,8 +163,8 @@ public class AdminApiIntegrationTest {
                 .andExpect(status().isOk());
 
         // Assert
+        verify(systemConfigService).updateConfig(eq(configKey), eq("new_value"), eq("new_desc"));
         String updatedValue = systemConfigService.get(configKey);
-        // Note: systemConfigService.get() returns String value
         assert(updatedValue.equals("new_value"));
     }
 }
