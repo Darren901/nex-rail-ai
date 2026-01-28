@@ -52,7 +52,7 @@ class ScheduleTaskExecutorFactoryTest {
         ScheduleTaskExecutorFactory emptyFactory = new ScheduleTaskExecutorFactory(List.of());
         emptyFactory.init();
 
-        assertThrows(RuntimeException.class, () -> {
+        assertThrows(ApBusinessException.class, () -> {
             emptyFactory.getExecutor(ScheduleTask.TaskType.REMINDER);
         });
     }

@@ -60,11 +60,12 @@ public class ThsrSearchIntegrationTest {
             FareResultDTO fare = new FareResultDTO("全票", "成人", "標準", 1490);
             ThsrSummaryDTO summary = new ThsrSummaryDTO("101", "10:00", "11:30", "有位", "有位", List.of(fare));
             
+            String futureDate = java.time.LocalDate.now().plusDays(30).toString();
             ThsrContextHolder.ThsrSearchResult result = ThsrContextHolder.ThsrSearchResult.builder()
                     .trains(List.of(summary))
                     .origin("台北")
                     .destination("高雄")
-                    .trainDate("2023-12-01")
+                    .trainDate(futureDate)
                     .build();
             ThsrContextHolder.set(result);
             return "這是您的查詢結果";

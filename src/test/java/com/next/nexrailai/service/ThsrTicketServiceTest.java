@@ -12,7 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,14 +34,15 @@ class ThsrTicketServiceTest {
     @Test
     void searchTickets_ShouldReturnFilteredResults() {
         // Arrange
-        SearchRequest request = new SearchRequest("台北", "高雄", "2023-12-01", "10:00", "成人", "單程票", "標準座");
+        String travelDate = LocalDate.now().plusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        SearchRequest request = new SearchRequest("台北", "高雄", travelDate, "10:00", "成人", "單程票", "標準座");
 
         // Mock Station Repo
         Station st1 = new Station(); st1.setTdxId("1000");
         Station st2 = new Station(); st2.setTdxId("2000");
-        when(stationRepo.findByStationNameContaining("台北")).thenReturn(Optional.of(st1));
+        when(stationRepo.findByStationNameContaining("台北")).thenReturn(java.util.Optional.of(st1));
         // "高雄" is normalized to "左營" in service
-        when(stationRepo.findByStationNameContaining("左營")).thenReturn(Optional.of(st2));
+        when(stationRepo.findByStationNameContaining("左營")).thenReturn(java.util.Optional.of(st2));
 
         // Mock TDX Timetable
         ThsrTimetableDTO train1 = mock(ThsrTimetableDTO.class);
@@ -56,13 +58,13 @@ class ThsrTicketServiceTest {
         when(train1.destinationStopTime()).thenReturn(stopTime); // Add this
         when(train1.trainInfo()).thenReturn(trainInfo);
         
-        when(tdxService.getThsrTimetable("1000", "2000", "2023-12-01")).thenReturn(List.of(train1));
+        when(tdxService.getThsrTimetable("1000", "2000", travelDate)).thenReturn(List.of(train1));
 
         // Mock Seats
         ThsrOdAvailableSeatDTO.OdAvailableSeatDTO seat = new ThsrOdAvailableSeatDTO.OdAvailableSeatDTO(
                 "101", "Limited", "Full"
         );
-        when(tdxService.getThsrAvailableSeats("1000", "2000", "2023-12-01")).thenReturn(List.of(seat));
+        when(tdxService.getThsrAvailableSeats("1000", "2000", travelDate)).thenReturn(List.of(seat));
 
         // Mock Fares
         ThsrFareDTO.Fare fare = new ThsrFareDTO.Fare(1, 1, 1, 1490); // TicketType=1(OneWay), FareClass=1(Adult), Cabin=1(Standard)

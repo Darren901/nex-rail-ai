@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,7 +50,9 @@ public class TicketMonitorExecutor implements ScheduleTaskExecutor {
 
             // 1. 檢查是否過期
             if (isExpired(request, task)) {
-                handleExpiredTask(task, request);
+                if (task.getStatus() != ScheduleTask.TaskStatus.FAILED) {
+                    handleExpiredTask(task, request);
+                }
                 return;
             }
 
@@ -133,12 +136,18 @@ public class TicketMonitorExecutor implements ScheduleTaskExecutor {
         String timeStr = request.time() != null ? request.time() : "23:59";
         if (timeStr.length() == 5) timeStr += ":00";
 
-        LocalDateTime departureDateTime = LocalDateTime.parse(request.date() + "T" + timeStr);
+        try {
+            LocalDateTime departureDateTime = LocalDateTime.parse(request.date() + "T" + timeStr);
 
-        if (LocalDateTime.now().isAfter(departureDateTime)) {
-            log.info(">>>> [TicketMonitor] Task ID: {} expired (Departure: {})", task.getId(), departureDateTime);
+            if (LocalDateTime.now().isAfter(departureDateTime)) {
+                log.info(">>>> [TicketMonitor] Task ID: {} expired (Departure: {})", task.getId(), departureDateTime);
+                return true;
+            }
+            return false;
+        } catch (DateTimeParseException e) {
+            log.error(">>>> [TicketMonitor] Malformed date/time payload for task ID: {}. Payload: {}", task.getId(), task.getPayload(), e);
+            task.setStatus(ScheduleTask.TaskStatus.FAILED);
             return true;
         }
-        return false;
     }
 }
