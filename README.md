@@ -47,7 +47,7 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
 
 1.  **Clone 專案**
     ```bash
-    git clone https://github.com/your-username/NexRailAI.git
+    git clone https://github.com/<actual-username>/NexRailAI.git
     cd NexRailAI
     ```
 
@@ -60,7 +60,7 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
     請確保以下環境變數已設定 (可透過 IDE 或系統環境變數)：
     
     | 變數名稱 | 描述 |
-    |Str |Str |
+    | --- | --- |
     | `GEMINI_API_KEY` | Google Gemini API 金鑰 |
     | `LINE_BOT_TOKEN` | LINE Channel Access Token |
     | `LINE_BOT_SECRET` | LINE Channel Secret |
