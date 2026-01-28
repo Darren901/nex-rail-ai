@@ -7,8 +7,8 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
 ## 主要功能
 
 *   **自然語言互動**
-    支援像真人一樣的流暢對話，無需死記指令 (e.g., "幫我查明天早上九點去高雄的車，我要靠窗").
-*   **精美 Flex Message 介面**
+    支援像真人一樣的流暢對話，無需死記指令 (例如: "幫我查明天早上九點去高雄的車，我要靠窗")。
+*   **Flex Message 介面**
     告別純文字回覆！系統自動將查詢結果轉換為美觀的 LINE Flex Message 卡片，清楚呈現車次、發車/抵達時間、行駛時間與剩餘座位狀態。
 *   **智慧刷票監控**
     針對熱門時段或已售罄的班次，可指令 AI 進行「監控任務」。系統將在背景持續掃描座位釋出狀況，一旦有票立即推播通知。
@@ -20,6 +20,8 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
     依據起訖站自動計算標準車廂、商務車廂及自由座票價，並提供直達高鐵官方訂票系統的 Deep Link，點擊卡片即可開始訂票。
 *   **流量控制**
     內建 Rate Limiter，針對使用者進行每日/每月的使用額度控管，防止 API 濫用。
+*   **系統管理與廣播**
+    提供管理員專屬 API，支援動態調整系統參數與發送全站推播訊息，並具備 JWT 安全認證機制。
 
 ## 技術棧
 
@@ -74,7 +76,14 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
 
 ### 測試
 
-執行單元測試以確保環境設定正確：
+本專案包含完整的測試套件，涵蓋核心功能、單元測試與整合流程：
+
+*   **搜尋整合測試 (ThsrSearchIntegrationTest)**: 驗證使用者對話、AI 意圖解析、TDX 資料查詢至 Flex Message 回覆的完整流程。
+*   **排程任務測試 (ScheduleTaskIntegrationTest)**: 驗證自動查票監控、任務狀態流轉 (Pending -> Completed/Expired) 及錯誤重試機制。
+*   **管理員 API 測試 (AdminApiIntegrationTest)**: 驗證後台登入、JWT Token 簽發與驗證、系統廣播及參數設定功能。
+*   **核心服務單元測試**: 涵蓋 `TdxService`、`LineService`、`ThsrTicketService`、`RateLimitService` 等核心邏輯驗證。
+
+執行所有測試：
 ```bash
 ./mvnw test
 ```
@@ -87,3 +96,4 @@ NexRailAI 是一個結合生成式 AI (Google Gemini) 與 LINE Messaging API 的
 *   `src/main/java/com/next/nexrailai/utils`: Flex Message 建構工具 (`FlexMessageUtil`)
 *   `src/main/java/com/next/nexrailai/scheduled`: 背景排程任務 (刷票與提醒)
 *   `src/main/java/com/next/nexrailai/jpa`: 資料庫 Entity 與 Repository
+*   `src/test/java/com/next/nexrailai/integration`: 整合測試程式碼

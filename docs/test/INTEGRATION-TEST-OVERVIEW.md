@@ -10,8 +10,8 @@
 | 場景 | 狀態 | 說明 |
 | --- | --- | --- |
 | **完整搜尋流程** | ✅ 完成 | 使用者發送訊息 -> AI (Mock) -> TDX (Simulated) -> Flex Message |
-| **排程任務執行** | 🔴 待測試 | 資料庫 Task -> ScheduleService -> LINE 推播 |
-| **管理員 API** | 🔴 待測試 | JWT 驗證 -> 廣播/設定修改 -> DB 狀態驗證 |
+| **排程任務執行** | ✅ 完成 | 資料庫 Task -> ScheduleService -> LINE 推播 |
+| **管理員 API** | ✅ 完成 | JWT 驗證 -> 廣播/設定修改 -> DB 狀態驗證 |
 
 ## 測試規範
 1. **獨立性**: 每個測試類別啟動獨立的 Context 或使用 `@DirtiesContext`。
@@ -22,3 +22,5 @@
 
 ## 已完成的測試
 - `ThsrSearchIntegrationTest`: 驗證搜尋流程與流量限制。
+- `ScheduleTaskIntegrationTest`: 驗證排程任務掃描、執行、票務監控、過期與錯誤重試機制。
+- `AdminApiIntegrationTest`: 驗證管理員登入、JWT 驗證、廣播與系統設定 API。

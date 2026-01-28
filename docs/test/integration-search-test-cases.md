@@ -3,7 +3,7 @@
 ## 1. Search Flow Test
 Target: `com.next.nexrailai.service.LineService` (Integration Level)
 
-[ ] [正常情況] User sends search query -> System replies with Timetable
+[x] [正常情況] User sends search query -> System replies with Timetable
 **測試資料**
 User: "U100"
 Message: "查明天早上台北到高雄"
@@ -23,7 +23,7 @@ Mock AI: Sets Context (BookingLink: "http://...")
 1. `LineMessageService.reply` 被呼叫
 2. 參數為 `FlexMessage` (Booking Confirmation)
 
-[ ] [異常處理] Rate Limit Exceeded
+[x] [異常處理] Rate Limit Exceeded
 **測試資料**
 User: "U_BROKE"
 Redis Quota: 0
