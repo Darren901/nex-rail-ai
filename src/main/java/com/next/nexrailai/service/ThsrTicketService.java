@@ -10,6 +10,7 @@ import com.next.nexrailai.dto.ai.BookingRequest;
 import com.next.nexrailai.dto.ai.SearchRequest;
 import com.next.nexrailai.jpa.entity.Station;
 import com.next.nexrailai.jpa.repository.StationRepository;
+import com.next.nexrailai.utils.EnumUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -57,17 +58,15 @@ public class ThsrTicketService {
         List<ThsrFareDTO> tdxFares = tdxService.getFares(fromId, toId);
 
         // 準備過濾條件參數 (若為 null 則不過濾)
-        Integer targetFareClass = (request.fareClass() != null && Constant.FareClass.fromName(request.fareClass()) != null) 
-                ? Constant.FareClass.fromName(request.fareClass()).getCode()
-                : null;
-                
-        Integer targetTicketType = (request.ticketType() != null && Constant.TicketType.fromName(request.ticketType()) != null) 
-                ? Constant.TicketType.fromName(request.ticketType()).getCode()
-                : null;
-                
-        Integer targetCabinClass = (request.cabinClass() != null && Constant.CabinClass.fromName(request.cabinClass()) != null) 
-                ? Constant.CabinClass.fromName(request.cabinClass()).getCode()
-                : null;
+        // 使用 EnumUtil 進行泛型查找
+        Constant.FareClass fareClassEnum = EnumUtil.fromName(Constant.FareClass.class, request.fareClass());
+        Integer targetFareClass = (fareClassEnum != null) ? fareClassEnum.getCode() : null;
+        
+        Constant.TicketType ticketTypeEnum = EnumUtil.fromName(Constant.TicketType.class, request.ticketType());
+        Integer targetTicketType = (ticketTypeEnum != null) ? ticketTypeEnum.getCode() : null;
+        
+        Constant.CabinClass cabinClassEnum = EnumUtil.fromName(Constant.CabinClass.class, request.cabinClass());
+        Integer targetCabinClass = (cabinClassEnum != null) ? cabinClassEnum.getCode() : null;
         
         log.info(">>>> [DEBUG] Filters - FareClass: {}, TicketType: {}, CabinClass: {}", targetFareClass, targetTicketType, targetCabinClass);
 
@@ -81,13 +80,13 @@ public class ThsrTicketService {
                 .filter(fare -> targetTicketType == null || fare.ticketType().equals(targetTicketType))
                 .filter(fare -> targetCabinClass == null || fare.cabinClass().equals(targetCabinClass))
                 .map(fare -> {
-                    Constant.TicketType type = Constant.TicketType.fromCode(fare.ticketType());
+                    Constant.TicketType type = EnumUtil.fromCode(Constant.TicketType.class, fare.ticketType());
                     String ticketTypeName = (type != null) ? type.getName() : "未知";
                     
-                    Constant.FareClass fc = Constant.FareClass.fromCode(fare.fareClass());
+                    Constant.FareClass fc = EnumUtil.fromCode(Constant.FareClass.class, fare.fareClass());
                     String fareClassName = (fc != null) ? fc.getName() : "未知";
                     
-                    Constant.CabinClass cc = Constant.CabinClass.fromCode(fare.cabinClass());
+                    Constant.CabinClass cc = EnumUtil.fromCode(Constant.CabinClass.class, fare.cabinClass());
                     String cabinClassName = (cc != null) ? cc.getName() : "未知";
                     
                     return new FareResultDTO(ticketTypeName, fareClassName, cabinClassName, fare.price());

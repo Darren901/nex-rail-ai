@@ -1,9 +1,10 @@
 package com.next.nexrailai.controller.admin;
 
+import com.linecorp.bot.messaging.model.TextMessage;
 import com.next.nexrailai.dto.admin.BroadcastRequest;
 import com.next.nexrailai.jpa.entity.AppUser;
 import com.next.nexrailai.jpa.repository.AppUserRepository;
-import com.next.nexrailai.service.LineService;
+import com.next.nexrailai.service.LineMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ import java.util.List;
 public class AdminBroadcastController {
 
     private final AppUserRepository userRepository;
-    private final LineService lineService;
+    private final LineMessageService lineMessageService; // Changed from LineService
 
     @PostMapping
     public ResponseEntity<Void> sendBroadcast(@RequestBody BroadcastRequest request) {
@@ -36,7 +37,7 @@ public class AdminBroadcastController {
             return ResponseEntity.badRequest().build();
         }
 
-        lineService.sendMulticast(targetUserIds, request.message());
+        lineMessageService.multicast(targetUserIds, new TextMessage(request.message()));
         
         return ResponseEntity.ok().build();
     }
