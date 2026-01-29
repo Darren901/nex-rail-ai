@@ -1,5 +1,6 @@
 package com.next.nexrailai.scheduled;
 
+import com.next.nexrailai.aspect.DistributedLock;
 import com.next.nexrailai.jpa.entity.ScheduleTask;
 import com.next.nexrailai.jpa.repository.ScheduleTaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,9 @@ public class CacheCleanupScheduler {
     private final ScheduleTaskRepository scheduleTaskRepository;
 
     // 每天凌晨 4 點清理 30 天前的歷史任務
+    // 使用分散式鎖確保多實例環境下只有一個實例執行
     @Scheduled(cron = "0 0 4 * * ?")
+    @DistributedLock(key = "cleanup-old-tasks", expireTime = 600)
     @Transactional
     public void cleanupOldTasks() {
         try {

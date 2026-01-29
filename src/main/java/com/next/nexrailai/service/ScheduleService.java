@@ -1,5 +1,6 @@
 package com.next.nexrailai.service;
 
+import com.next.nexrailai.aspect.DistributedLock;
 import com.next.nexrailai.common.ApBusinessException;
 import com.next.nexrailai.common.Constant;
 import com.next.nexrailai.dto.ai.SearchRequest;
@@ -105,8 +106,10 @@ public class ScheduleService {
 
     /**
      * 定時檢查並執行任務
+     * 使用分散式鎖確保多實例環境下只有一個實例執行
      */
     @Scheduled(fixedRate = 30000)
+    @DistributedLock(key = "process-scheduled-tasks", expireTime = 60)
     public void processScheduledTasks() {
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleTask> tasks = repository.findByStatusAndTriggerTimeBefore(ScheduleTask.TaskStatus.PENDING, now);
