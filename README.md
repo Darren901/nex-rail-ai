@@ -64,10 +64,17 @@ NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
   *   導入 **Redisson** 框架，取代自行維護 Lua Script 的高成本。
   *   啟用 **Watchdog 機制**：考量到外部 API 可能延遲導致任務執行時間超過鎖的 TTL，Watchdog 會每 10 秒自動續約，確保任務執行期間鎖不會意外釋放，徹底解決 Race Condition。
 
-### 2. LLM 的精準控制
+### 2. 解決排程任務的隊頭阻塞 (Head-of-Line Blocking)
+為了避免耗時的監控任務阻塞輕量的提醒任務，我利用 **Virtual Threads** 取代傳統的執行緒池。
+
+*   **實作**：使用 `Executors.newVirtualThreadPerTaskExecutor()` 為每個排程任務分配獨立的虛擬執行緒，實現高吞吐量並行處理。
+*   **保護機制**：引入 `Semaphore` 限制最大併發數（20），以免 TDX API 被打爆吐出 429。
+*   **結構化並發**：利用 `try-with-resources` 確保主執行緒等待所有虛擬執行緒完成後才釋放分散式鎖，保證數據一致性。
+
+### 3. LLM 的精準控制
 為了避免大型語言模型產生幻覺，系統並非讓 LLM 直接生成回覆，而是將其定位為 **語意路由器 (Semantic Router)**。利用 **Spring AI Function Calling** 將自然語言轉換為嚴格定義的 JSON 參數，再由後端程式碼呼叫 TDX API，確保票務資訊的絕對正確性。
 
-### 3. 整合測試策略
+### 4. 整合測試策略
 為了驗證 Watchdog 自動續約機制，單純的單元測試無法模擬真實 Redis 的過期與續約行為。因此引入 **Testcontainers**，在測試階段動態啟動真實 Redis 容器，進行端對端的並發控制測試，確保鎖機制在生產環境可靠。
 
 ## 開發挑戰與解決 (Challenges & Solutions)

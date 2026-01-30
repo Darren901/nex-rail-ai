@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,9 @@ public class ScheduleService {
     private final ScheduleTaskRepository repository;
     private final RateLimitService rateLimitService;
     private final ScheduleTaskExecutorFactory taskExecutorFactory;
+
+    // 限制最大並發數 怕 TDX 被打爆吐 429
+    private final Semaphore semaphore = new Semaphore(20);
 
     /**
      * 新增一般提醒任務
@@ -107,6 +112,7 @@ public class ScheduleService {
     /**
      * 定時檢查並執行任務
      * 使用分散式鎖確保多實例環境下只有一個實例執行
+     * 使用虛擬執行緒並行處理 避免阻塞
      */
     @Scheduled(fixedRate = 30000)
     @DistributedLock(key = "process-scheduled-tasks")
@@ -114,20 +120,74 @@ public class ScheduleService {
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleTask> tasks = repository.findByStatusAndTriggerTimeBefore(ScheduleTask.TaskStatus.PENDING, now);
 
-        if (!tasks.isEmpty()) {
-            log.info(">>>> [Schedule] 發現 {} 個到期任務，準備執行...", tasks.size());
+        if (tasks.isEmpty()) {
+            return;
         }
 
-        for (ScheduleTask task : tasks) {
+        log.info(">>>> [Schedule] 發現 {} 個到期任務，準備並行執行...", tasks.size());
+
+        // try-with-resources 會自動等待所有任務完成
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            tasks.forEach(task -> executor.submit(() -> executeTaskWithRateLimit(task)));
+        } // 這裡會 Block 直到所有虛擬執行緒完成
+
+        log.info(">>>> [Schedule] 批量執行程序完成 (共 {} 筆任務已分發)", tasks.size());
+    }
+
+    /**
+     * 執行單一任務（帶速率限制和錯誤處理）
+     * 每個任務執行完畢後立即儲存，避免並發修改導致的狀態不一致 (Race Condition)
+     *
+     * 1. Semaphore 速率限制（最多 20 個並發）
+     * 2. 中斷處理
+     * 3. 失敗重試（指數退避）
+     */
+    private void executeTaskWithRateLimit(ScheduleTask task) {
+        try {
+            // 取得許可證 (Rate Limiting)
+            semaphore.acquire();
             try {
-                ScheduleTaskExecutor executor = taskExecutorFactory.getExecutor(task.getTaskType());
-                executor.execute(task);
-            } catch (Exception e) {
-                log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e);
-                // 失敗重試：5 分鐘後
-                task.setTriggerTime(LocalDateTime.now().plusMinutes(5));
+                ScheduleTaskExecutor taskExecutor = taskExecutorFactory.getExecutor(task.getTaskType());
+                taskExecutor.execute(task);
+            } finally {
+                semaphore.release();
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn(">>>> [Schedule] 任務執行被中斷 ID: {}", task.getId());
+            return; // 中斷時不更新狀態，等待下次排程重試
+        } catch (Exception e) {
+            log.error(">>>> [Schedule] 任務執行失敗 ID: {}", task.getId(), e);
+            handleTaskFailure(task);
         }
-        repository.saveAll(tasks);
+
+        // 每個任務執行完畢後，立即寫回資料庫
+        try {
+            repository.save(task);
+        } catch (Exception e) {
+            log.error(">>>> [Schedule] 任務狀態更新失敗 ID: {}", task.getId(), e);
+        }
+    }
+
+    /**
+     * 處理任務失敗重試邏輯
+     */
+    private void handleTaskFailure(ScheduleTask task) {
+        int retryCount = task.getRetryCount() + 1;
+        task.setRetryCount(retryCount);
+
+        if (retryCount >= 3) {
+            log.error(">>>> [Schedule] 任務 ID: {} 重試次數超過上限 ({})，標記為 FAILED", task.getId(), retryCount);
+            task.setStatus(ScheduleTask.TaskStatus.FAILED);
+        } else {
+            // 指數退避: 5 * 3^(retry-1) minutes
+            // retry=1 -> 5 min
+            // retry=2 -> 15 min
+            long delayMinutes = 5 * (long) Math.pow(3, retryCount - 1);
+            LocalDateTime nextTrigger = LocalDateTime.now().plusMinutes(delayMinutes);
+            
+            task.setTriggerTime(nextTrigger);
+            log.warn(">>>> [Schedule] 任務 ID: {} 失敗，將於 {} 分鐘後重試 (第 {} 次)", task.getId(), delayMinutes, retryCount);
+        }
     }
 }
