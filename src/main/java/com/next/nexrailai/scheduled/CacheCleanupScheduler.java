@@ -25,7 +25,7 @@ public class CacheCleanupScheduler {
     // 每天凌晨 4 點清理 30 天前的歷史任務
     // 使用分散式鎖確保多實例環境下只有一個實例執行
     @Scheduled(cron = "0 0 4 * * ?")
-    @DistributedLock(key = "cleanup-old-tasks", expireTime = 600)
+    @DistributedLock(key = "cleanup-old-tasks")
     @Transactional
     public void cleanupOldTasks() {
         try {

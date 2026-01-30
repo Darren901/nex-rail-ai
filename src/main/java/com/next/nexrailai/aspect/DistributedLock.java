@@ -17,10 +17,4 @@ public @interface DistributedLock {
      * 鎖的 key（會自動加上 "lock:scheduled:" 前綴）
      */
     String key();
-    
-    /**
-     * 鎖的過期時間（秒）
-     * 預設 300 秒 (5 分鐘)
-     */
-    long expireTime() default 300;
 }

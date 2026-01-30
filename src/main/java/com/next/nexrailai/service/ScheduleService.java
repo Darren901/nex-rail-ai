@@ -109,7 +109,7 @@ public class ScheduleService {
      * 使用分散式鎖確保多實例環境下只有一個實例執行
      */
     @Scheduled(fixedRate = 30000)
-    @DistributedLock(key = "process-scheduled-tasks", expireTime = 60)
+    @DistributedLock(key = "process-scheduled-tasks")
     public void processScheduledTasks() {
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleTask> tasks = repository.findByStatusAndTriggerTimeBefore(ScheduleTask.TaskStatus.PENDING, now);

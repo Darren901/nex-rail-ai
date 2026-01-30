@@ -52,7 +52,7 @@ class DistributedLockAspectTest {
     // ==================== 正常情況 ====================
 
     @Test
-    @DisplayName("應該成功取得鎖並執行業務邏輯")
+    @DisplayName("應該成功取得鎖並執行業務邏輯 (Watchdog 模式)")
     void shouldAcquireLockAndExecuteBusinessLogic() throws Throwable {
         // Arrange
         when(lock.tryLock(eq(-1L), any(TimeUnit.class))).thenReturn(true);
@@ -83,21 +83,6 @@ class DistributedLockAspectTest {
         assertNull(result);
         verify(joinPoint, never()).proceed(); // 業務邏輯不應被執行
         verify(lock, never()).unlock(); // 鎖不應被釋放（因為沒取得）
-    }
-
-    @Test
-    @DisplayName("應該使用 Watchdog 自動續約機制 (leaseTime = -1)")
-    void shouldUseWatchdogAutoRenewal() throws Throwable {
-        // Arrange
-        when(lock.tryLock(eq(-1L), any(TimeUnit.class))).thenReturn(true);
-        when(lock.isHeldByCurrentThread()).thenReturn(true);
-        when(joinPoint.proceed()).thenReturn("result");
-
-        // Act
-        distributedLockAspect.around(joinPoint, distributedLockAnnotation);
-
-        // Assert
-        verify(lock).tryLock(-1L, TimeUnit.MILLISECONDS); // 驗證 leaseTime = -1
     }
 
     // ==================== 邊界值 ====================
@@ -165,6 +150,8 @@ class DistributedLockAspectTest {
             distributedLockAspect.around(joinPoint, distributedLockAnnotation);
         });
         assertEquals("執行緒被中斷", exception.getMessage());
+        assertTrue(Thread.currentThread().isInterrupted(), "應該恢復中斷狀態");
+        Thread.interrupted(); // 清除中斷狀態
 
         verify(joinPoint, never()).proceed(); // 業務邏輯不應被執行
         verify(lock, never()).unlock(); // 鎖不應被釋放（因為沒取得）

@@ -143,7 +143,7 @@
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
-            <version>3.41.0</version>
+            <version>3.48.0</version>
         </dependency>
 
         <!-- Testcontainers: 整合測試用真實 Redis 環境 -->

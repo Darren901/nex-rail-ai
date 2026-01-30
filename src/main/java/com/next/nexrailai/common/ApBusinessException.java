@@ -1,8 +1,6 @@
 package com.next.nexrailai.common;
 
 
-import static io.lettuce.core.pubsub.PubSubOutput.Type.message;
-
 public class ApBusinessException extends RuntimeException {
 
     private String errorCode;

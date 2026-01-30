@@ -43,12 +43,12 @@ public class RedissonConfig {
                 .setPassword(redisPassword.isEmpty() ? null : redisPassword)
                 .setConnectionPoolSize(64)
                 .setConnectionMinimumIdleSize(10)
-                // Watchdog 超時時間（鎖的預設過期時間）
+                // Redis 超時時間（鎖的預設過期時間）
                 .setTimeout(3000)
                 .setRetryAttempts(3)
                 .setRetryInterval(1500);
 
-        // 設定 Watchdog 超時（預設 30 秒，可根據需求調整）
+        // 設定 Watchdog 超時
         config.setLockWatchdogTimeout(30000L); // 30 秒
 
         return Redisson.create(config);

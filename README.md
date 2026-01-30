@@ -61,8 +61,8 @@ NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
 
 *   **決策**：放棄效能較差的資料庫鎖，選擇 Redis 分散式鎖。
 *   **實作細節**：
-    *   導入 **Redisson** 框架，取代自行維護 Lua Script 的高成本。
-    *   啟用 **Watchdog 機制**：考量到外部 API 可能延遲導致任務執行時間超過鎖的 TTL，Watchdog 會每 10 秒自動續約，確保任務執行期間鎖不會意外釋放，徹底解決 Race Condition。
+  *   導入 **Redisson** 框架，取代自行維護 Lua Script 的高成本。
+  *   啟用 **Watchdog 機制**：考量到外部 API 可能延遲導致任務執行時間超過鎖的 TTL，Watchdog 會每 10 秒自動續約，確保任務執行期間鎖不會意外釋放，徹底解決 Race Condition。
 
 ### 2. LLM 的精準控制
 為了避免大型語言模型產生幻覺，系統並非讓 LLM 直接生成回覆，而是將其定位為 **語意路由器 (Semantic Router)**。利用 **Spring AI Function Calling** 將自然語言轉換為嚴格定義的 JSON 參數，再由後端程式碼呼叫 TDX API，確保票務資訊的絕對正確性。
@@ -129,8 +129,8 @@ NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
 *   **測試統計**：18 個測試類別，超過 100 個測試案例，核心業務邏輯覆蓋率達 95%。
 *   **單元測試**：使用 JUnit 5 與 Mockito 驗證 Service 層邏輯。
 *   **整合測試**：
-    *   **ThsrSearchIntegrationTest**：驗證從使用者訊息、AI 解析到 Flex Message 回覆的完整流程。
-    *   **DistributedLockIntegrationTest**：使用 Testcontainers 啟動真實 Redis，驗證多執行緒下的鎖競爭與 Watchdog 行為。
+  *   **ThsrSearchIntegrationTest**：驗證從使用者訊息、AI 解析到 Flex Message 回覆的完整流程。
+  *   **DistributedLockIntegrationTest**：使用 Testcontainers 啟動真實 Redis，驗證多執行緒下的鎖競爭與 Watchdog 行為。
 
 ## 使用技術 (Built With)
 

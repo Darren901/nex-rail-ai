@@ -108,8 +108,9 @@ public class DistributedLockIntegrationTest {
         });
 
         try {
-            // 等待另一個執行緒取得鎖
-            lockAcquired.await();
+            // 等待另一個執行緒取得鎖 (最多 5 秒)
+            boolean locked = lockAcquired.await(5, TimeUnit.SECONDS);
+            assertTrue(locked, "Should acquire lock within timeout");
             assertTrue(lock.isLocked(), "Lock should be held by another thread");
 
             // Act: 在主執行緒嘗試執行帶鎖的方法
@@ -120,8 +121,12 @@ public class DistributedLockIntegrationTest {
 
         } finally {
             // Cleanup
-            lockHolder.get(); // 等待鎖被釋放
-            executor.shutdown();
+            try {
+                lockHolder.get(5, TimeUnit.SECONDS); // 等待鎖被釋放
+            } catch (TimeoutException e) {
+                // 忽略超時，繼續 shutdown
+            }
+            executor.shutdownNow();
         }
     }
 
@@ -170,20 +175,20 @@ public class DistributedLockIntegrationTest {
     }
 
     /**
-     * [Watchdog] 長時間執行任務，鎖不會過期
+     * [Watchdog] 使用 Watchdog 自動續約 (預設行為)
      */
     @Test
-    void shouldNotExpireLockDuringLongRunningTask() throws InterruptedException, ExecutionException, TimeoutException {
+    void shouldNotExpireLockWithWatchdog() throws InterruptedException, ExecutionException, TimeoutException {
         // Arrange
-        String lockKey = "lock:scheduled:long-task";
+        String lockKey = "lock:scheduled:watchdog-task";
         AtomicInteger lockChecksDuringExecution = new AtomicInteger(0);
 
         // Act: 在背景執行緒中執行長任務
         CompletableFuture<String> taskFuture = CompletableFuture.supplyAsync(() ->
-                testLockService.executeLongRunningTask("long-task")
+                testLockService.executeWithWatchdog("watchdog-task")
         );
 
-        // 在任務執行期間檢查鎖狀態（每 500ms 檢查一次，持續 3 秒）
+        // 在任務執行期間檢查鎖狀態
         Thread.sleep(500); // 等待任務開始
         for (int i = 0; i < 6; i++) {
             RLock lock = redissonClient.getLock(lockKey);
@@ -198,7 +203,7 @@ public class DistributedLockIntegrationTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals("Long task completed", result);
+        assertEquals("Watchdog task completed", result);
         assertTrue(lockChecksDuringExecution.get() >= 4,
                 "Lock should remain held during execution (Watchdog auto-renewal). Checks: " + lockChecksDuringExecution.get());
 
@@ -301,7 +306,7 @@ public class DistributedLockIntegrationTest {
             return "Slow task completed";
         }
 
-        @DistributedLock(key = "long-task", expireTime = 60)
+        @DistributedLock(key = "long-task")
         public String executeLongRunningTask(String taskName) {
             try {
                 // 模擬執行 4 秒（超過一般 Watchdog 檢查間隔）
@@ -312,6 +317,19 @@ public class DistributedLockIntegrationTest {
             }
             return "Long task completed";
         }
+
+        @DistributedLock(key = "watchdog-task")
+        public String executeWithWatchdog(String taskName) {
+            try {
+                Thread.sleep(4000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+            return "Watchdog task completed";
+        }
+
+        // 移除 executeWithShortTTL，因為不再支援透過註解設定 TTL
 
         @DistributedLock(key = "error-task")
         public String executeWithException(String taskName) {
