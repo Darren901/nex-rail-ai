@@ -238,24 +238,26 @@ public class DistributedLockIntegrationTest {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
         List<String> results = new ArrayList<>();
 
-        // Act: 執行緒 A 先執行
-        Future<String> taskA = executorService.submit(() ->
-                testLockService.executeWithLock("sequential-task")
-        );
-        results.add(taskA.get());
+       try{
+           // Act: 執行緒 A 先執行
+           Future<String> taskA = executorService.submit(() ->
+                   testLockService.executeWithLock("sequential-task")
+           );
+           results.add(taskA.get());
 
-        // 執行緒 B 在 A 完成後執行
-        Future<String> taskB = executorService.submit(() ->
-                testLockService.executeWithLock("sequential-task")
-        );
-        results.add(taskB.get());
+           // 執行緒 B 在 A 完成後執行
+           Future<String> taskB = executorService.submit(() ->
+                   testLockService.executeWithLock("sequential-task")
+           );
+           results.add(taskB.get());
 
-        // Assert
-        assertEquals(2, results.size());
-        assertEquals("Task executed successfully", results.get(0));
-        assertEquals("Task executed successfully", results.get(1));
-
-        executorService.shutdown();
+           // Assert
+           assertEquals(2, results.size());
+           assertEquals("Task executed successfully", results.get(0));
+           assertEquals("Task executed successfully", results.get(1));
+       } finally {
+           executorService.shutdown();
+       }
     }
 
     /**

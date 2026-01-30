@@ -47,7 +47,7 @@ public class DistributedLockAspect {
             Thread.currentThread().interrupt();
             throw e;
         } catch (Exception e) {
-            log.error(">>>> [分散式鎖 Redisson] 執行失敗: {}", lockKey, e);
+            log.error(">>>> [分散式鎖 Redisson] 鎖 {} 執行失敗: {}", lockKey, e.getMessage(), e);
             throw e;
         } finally {
             if (acquired && lock.isHeldByCurrentThread()) {
