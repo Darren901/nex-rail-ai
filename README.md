@@ -1,58 +1,10 @@
 # NexRailAI
 
-NexRailAI 是一個結合 LLM 語意理解與分散式架構的高鐵訂票助理。旨在解決傳統指令式 Chatbot 體驗不佳，以及熱門時段搶票監控的自動化需求。
+NexRailAI 是一個結合 LLM 語意理解與分散式架構的高鐵訂票助理，直接整合在每個人日常最熟悉的 **LINE** 中。旨在解決傳統指令式 Chatbot 體驗不佳，以及熱門時段搶票監控的自動化需求，讓訂票就像跟朋友聊天一樣簡單。
 
 不同於一般 Chatbot 僅做關鍵字匹配，本專案利用 Google Gemini 的 Function Calling 能力，將自然語言精準轉換為結構化 API 請求，並透過分散式架構確保系統在高併發與多實例環境下的穩定性。
 
-## 核心功能 (Core Features)
-
-NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
-
-*   **自然語言查票 (AI-Powered Search)**
-    拋棄僵化的指令。你可以直接說：幫我查本週五晚上七點後回台南的票。AI 能精準解析模糊的時間概念與起訖地點，直接喚起訂票介面。
-
-*   **智慧搶票監控 (Smart Monitoring)**
-    熱門時段買不到票？只需告訴 AI：幫我監控這班車。系統便會在背景持續掃描釋出座位。一旦有人退票，系統將立即發送 LINE 通知。
-
-*   **智慧記憶與常用班次 (Smart Memory)**
-    AI 具備長期記憶能力。你可以設定如：這是我女兒的班次，幫我記下來。下次只需說：幫我查女兒的班次，系統即可自動帶入對應的起訖站與時間偏好。
-
-*   **個人化提醒 (Custom Reminders)**
-    隨身的 LINE 備忘錄。你可以設定任意時間的提醒事項，例如：明天早上 10 點提醒我搶連假車票。系統將準時透過 LINE 推播通知。
-
-*   **圖文選單與快速存取 (Rich Menu)**
-    提供直覺的 Rich Menu 介面，讓使用者能一鍵查詢當前的監控任務與待辦提醒，快速掌握所有背景任務狀態。
-
-*   **視覺化票務卡片 (Rich UI)**
-    所有查詢結果皆以 LINE Flex Message 呈現。清楚的發車時間、行駛時長與剩餘座位狀態，點擊卡片即可直達官方購票頁面。
-
-*   **系統管理與控管 (System Management)**
-    具備完善的配額管理機制，針對每位使用者的每日 AI 對話次數與每月提醒設定次數進行流量控制 (Rate Limiting)，並提供管理員後台進行全站廣播與系統參數調整。
-
-## 立即體驗 (Live Demo)
-
-歡迎掃描下方 QR Code 加入 LINE 官方帳號，體驗 NexRailAI 的功能：
-
-![NexRailAI QR Code](docs/images/qrcode.png)
-
-> 若無法掃描，請搜尋 LINE ID: @539axasf
-
-## 實機畫面 (Screenshots)
-
-### 手機端體驗 (Mobile Experience)
-
-|                      自然語言訂票                       |                       待辦提醒與常用行程                       |                        監控通知與卡片                         |
-|:-------------------------------------------------:|:-----------------------------------------------------:|:------------------------------------------------------:|
-| <img src="docs/images/chat_demo.jpg" width="250"> | <img src="docs/images/reminder_demo.jpg" width="250"> | <img src="docs/images/monitor_notify.jpg" width="250"> |
-|                支援模糊時間與地點解析，直接喚起訂票                 |                    設定個人化提醒與記憶常用班次                     |                   背景自動掃描釋出座位，即時推播通知                    |
-
-### 後台管理系統 (Admin Dashboard)
-
-<img src="docs/images/admin_dashboard.png" width="800">
-
-> 視覺化監控系統狀態、任務管理、使用者管理與全站參數熱更新。
-
-## 關鍵工程決策 (Key Engineering Decisions)
+## 技術架構與決策 (Architecture & Decisions)
 
 這是在開發過程中針對不同場景所做的技術選擇與權衡：
 
@@ -65,10 +17,10 @@ NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
   *   啟用 **Watchdog 機制**：考量到外部 API 可能延遲導致任務執行時間超過鎖的 TTL，Watchdog 會每 10 秒自動續約，確保任務執行期間鎖不會意外釋放，徹底解決 Race Condition。
 
 ### 2. 解決排程任務的隊頭阻塞 (Head-of-Line Blocking)
-為了避免耗時的監控任務阻塞輕量的提醒任務，我利用 **Virtual Threads** 取代傳統的執行緒池。
+為了避免耗時的監控任務阻塞輕量的提醒任務，我利用 **Java 21 Virtual Threads (Project Loom)** 取代傳統的執行緒池。
 
 *   **實作**：使用 `Executors.newVirtualThreadPerTaskExecutor()` 為每個排程任務分配獨立的虛擬執行緒，實現高吞吐量並行處理。
-*   **保護機制**：引入 `Semaphore` 限制最大併發數（20），以免 TDX API 被打爆吐出 429。
+*   **保護機制**：引入 `Semaphore` 限制最大併發數（20），保護下游 TDX API 不被瞬間流量擊垮。
 *   **結構化並發**：利用 `try-with-resources` 確保主執行緒等待所有虛擬執行緒完成後才釋放分散式鎖，保證數據一致性。
 
 ### 3. LLM 的精準控制
@@ -76,6 +28,61 @@ NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
 
 ### 4. 整合測試策略
 為了驗證 Watchdog 自動續約機制，單純的單元測試無法模擬真實 Redis 的過期與續約行為。因此引入 **Testcontainers**，在測試階段動態啟動真實 Redis 容器，進行端對端的並發控制測試，確保鎖機制在生產環境可靠。
+
+## 實機畫面 (Screenshots)
+
+### 手機端體驗 (Mobile Experience)
+
+| 自然語言訂票 | 待辦提醒與常用行程 | 監控通知與卡片 |
+|:---:|:---:|:---:|
+| <img src="docs/images/chat_demo.jpg" width="250"> | <img src="docs/images/reminder_demo.jpg" width="250"> | <img src="docs/images/monitor_notify.jpg" width="250"> |
+| 支援模糊時間與地點解析，直接喚起訂票 | 設定個人化提醒與記憶常用班次 | 背景自動掃描釋出座位，即時推播通知 |
+
+### 後台管理系統 (Admin Dashboard)
+
+<img src="docs/images/admin_dashboard.png" width="800">
+
+> 視覺化監控系統狀態、任務管理、使用者管理與全站參數熱更新。
+
+## 立即體驗 (Live Demo)
+
+歡迎掃描下方 QR Code 加入 LINE 官方帳號，體驗 NexRailAI 的功能：
+
+![NexRailAI QR Code](docs/images/qrcode.png)
+
+> 若無法掃描，請搜尋 LINE ID: @539axasf
+
+## 核心功能 (Core Features)
+
+NexRailAI 將複雜的高鐵訂票流程簡化為直覺的對話體驗：
+
+*   **自然語言查票 (AI-Powered Search)**
+    
+    拋棄僵化的指令。你可以直接說：幫我查本週五晚上七點後回台南的票。AI 能精準解析模糊的時間概念與起訖地點，直接喚起訂票介面。
+
+*   **智慧搶票監控 (Smart Monitoring)**
+    
+    熱門時段買不到票？只需告訴 AI：幫我監控這班車。系統便會在背景持續掃描釋出座位。一旦有人退票，系統將立即發送 LINE 通知。
+
+*   **智慧記憶與常用班次 (Smart Memory)**
+    
+    AI 具備長期記憶能力。你可以設定如：這是我女兒的班次，幫我記下來。下次只需說：幫我查女兒的班次，系統即可自動帶入對應的起訖站與時間偏好。
+
+*   **個人化提醒 (Custom Reminders)**
+    
+    隨身的 LINE 備忘錄。你可以設定任意時間的提醒事項，例如：明天早上 10 點提醒我搶連假車票。系統將準時透過 LINE 推播通知。
+
+*   **圖文選單與快速存取 (Rich Menu)**
+    
+    提供直覺的 Rich Menu 介面，讓使用者能一鍵查詢當前的監控任務與待辦提醒，快速掌握所有背景任務狀態。
+
+*   **視覺化票務卡片 (Rich UI)**
+    
+    所有查詢結果皆以 LINE Flex Message 呈現。清楚的發車時間、行駛時長與剩餘座位狀態，點擊卡片即可直達官方購票頁面。
+
+*   **系統管理與控管 (System Management)**
+    
+    具備完善的配額管理機制，針對每位使用者的每日 AI 對話次數與每月提醒設定次數進行流量控制 (Rate Limiting)，並提供管理員後台進行全站廣播與系統參數調整。
 
 ## 開發挑戰與解決 (Challenges & Solutions)
 
