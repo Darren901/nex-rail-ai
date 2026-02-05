@@ -55,6 +55,10 @@ class RateLimitServiceTest {
         when(systemConfigService.getInt("daily_message_limit")).thenReturn(10);
         when(rateLimiter.isExists()).thenReturn(true); // 已初始化
         when(rateLimiter.tryAcquire(1)).thenReturn(false); // 無額度
+        
+        // Mock getConfig() to return matching rate (10) so no adjustment happens
+        when(rateLimiter.getConfig()).thenReturn(rateLimiterConfig);
+        when(rateLimiterConfig.getRate()).thenReturn(10L);
 
         // Act
         boolean result = rateLimitService.tryConsume("U123");
@@ -168,5 +172,30 @@ class RateLimitServiceTest {
         // Assert
         verify(rateLimiter).delete();
         verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(150L), eq(32L), eq(RateIntervalUnit.DAYS));
+    }
+
+    @Test
+    void tryConsume_ShouldReturnFalse_WhenRedisExceptionOccurs() {
+        // Arrange
+        when(redissonClient.getRateLimiter(anyString())).thenThrow(new RuntimeException("Redis connection failed"));
+
+        // Act
+        boolean result = rateLimitService.tryConsume("U123");
+
+        // Assert
+        assertFalse(result);
+        // 不應該拋出異常，應該捕獲並回傳 false
+    }
+
+    @Test
+    void getRemainingQuota_ShouldReturnZero_WhenRedisExceptionOccurs() {
+        // Arrange
+        when(redissonClient.getRateLimiter(anyString())).thenThrow(new RuntimeException("Redis connection failed"));
+
+        // Act
+        int result = rateLimitService.getRemainingQuota("U123");
+
+        // Assert
+        assertEquals(0, result);
     }
 }

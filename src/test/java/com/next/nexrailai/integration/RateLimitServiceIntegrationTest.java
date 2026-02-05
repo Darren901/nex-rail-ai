@@ -161,28 +161,53 @@ public class RateLimitServiceIntegrationTest {
     }
 
     /**
-     * 測試 4: setQuota 與 addQuota
+     * 測試 4: 自動配置同步驗證
+     * 當手動設定的額度與系統配置不符時，tryConsume 應該自動調整回系統配置
      */
     @Test
-    @DisplayName("應該能夠動態設定與增加額度")
-    void shouldAllowDynamicQuotaAdjustment() {
-        String userId = "U_ADMIN_TEST";
+    @DisplayName("當額度與系統配置不符時，應該自動調整回系統配置")
+    void shouldAutoAdjustQuotaOnConfigMismatch() {
+        String userId = "U_AUTO_ADJUST_TEST";
+        int systemDailyQuota = systemConfigService.getInt("daily_message_limit"); // 預設 10
 
-        // 設定自訂額度
+        // 1. 手動設定額度為 5 (與系統配置 10 不符)
         rateLimitService.setQuota(userId, 5);
         assertEquals(5, rateLimitService.getRemainingQuota(userId));
 
-        // 消耗 2 個
-        rateLimitService.tryConsume(userId);
-        rateLimitService.tryConsume(userId);
-        assertEquals(3, rateLimitService.getRemainingQuota(userId));
-
-        // 增加 10 個額度
-        rateLimitService.addQuota(userId, 10);
-        int newQuota = rateLimitService.getRemainingQuota(userId);
-        assertTrue(newQuota >= 10, "增加額度後應該至少有 10 個令牌");
+        // 2. 第一次消耗：應該觸發自動調整
+        // 舊速率 5, 新速率 10, 剩餘比例 100% -> 新剩餘 10
+        // 消耗 1 -> 剩 9
+        boolean result = rateLimitService.tryConsume(userId);
+        assertTrue(result);
         
-        log.info(">>>> [Test] 增加額度後，剩餘額度: {}", newQuota);
+        int expectedRemaining = systemDailyQuota - 1; // 10 - 1 = 9
+        assertEquals(expectedRemaining, rateLimitService.getRemainingQuota(userId));
+        
+        log.info(">>>> [Test] 自動調整驗證成功：設定 5 -> 自動調整為 10 -> 消耗 1 -> 剩 {}", expectedRemaining);
+        
+        // 3. 測試 addQuota 的行為（會暫時生效，直到下一次 tryConsume 檢測到不符）
+        // 增加 20 -> 速率變 30
+        rateLimitService.addQuota(userId, 20);
+        
+        // 尚未消耗前，額度確實增加了
+        // 目前剩 9，速率 10。addQuota(20) -> 速率變 30。
+        // delete() -> trySetRate(30)。剩餘額度重置為 30? 
+        // 不，addQuota 實作是：newTotal = rateLimiter.getConfig().getRate() (10) + 20 = 30
+        // delete() -> trySetRate(30)
+        // 所以剩餘額度變成 30 (滿的)
+        
+        // 注意：RRateLimiter 的 trySetRate 會將 availablePermits 重置為容量大小（如果是新建立的）
+        // 因為我們呼叫了 delete()，所以它是新建立的。
+        
+        assertEquals(30, rateLimitService.getRemainingQuota(userId));
+        
+        // 4. 再次消耗：又會觸發自動調整回 10
+        // 舊速率 30, 新速率 10, 剩餘 30 (100%) -> 新剩餘 10
+        // 消耗 1 -> 剩 9
+        rateLimitService.tryConsume(userId);
+        assertEquals(9, rateLimitService.getRemainingQuota(userId));
+        
+        log.info(">>>> [Test] addQuota 後再次消耗，額度被重置回系統配置（符合預期）");
     }
 
     /**
