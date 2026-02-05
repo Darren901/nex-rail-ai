@@ -56,19 +56,25 @@ public class LineService {
         // 2. 顯示 Loading
         showLoading(userId);
 
-        // 3. AI 處理
-        ThsrContextHolder.clear();
-        String replyMessage = aiService.chat(userId, message);
-        ThsrContextHolder.ThsrSearchResult searchResult = ThsrContextHolder.get();
+        try{
+            // 3. AI 處理
+            ThsrContextHolder.clear();
+            String replyMessage = aiService.chat(userId, message);
+            ThsrContextHolder.ThsrSearchResult searchResult = ThsrContextHolder.get();
 
-        // 4. 決定回覆訊息
-        Message messageToSend = decideMessage(replyMessage, message, searchResult);
+            // 4. 決定回覆訊息
+            Message messageToSend = decideMessage(replyMessage, message, searchResult);
 
-        // 5. 回覆
-        reply(replyToken, messageToSend);
+            // 5. 回覆
+            reply(replyToken, messageToSend);
+        } catch (Exception e) {
+            log.error(">>>> [LINE Service] 處理訊息異常: ", e);
+        } finally {
+            // 6. 清理
+            ThsrContextHolder.clear();
+        }
 
-        // 6. 清理
-        ThsrContextHolder.clear();
+
     }
 
     private void handleCommand(String userId, String command, String replyToken) {
