@@ -204,9 +204,29 @@
 1. `shouldAllowDynamicQuotaAdjustment` - 失敗原因：`addQuota()` 使用 `trySetRate()` 對已存在的 RateLimiter 無效
 2. `shouldUsePersistentKeyWithoutDate` - 失敗原因：`countExists()` 萬用字元匹配錯誤
 
-**修正措施**:
+**第一次修正措施**:
 - 修改 `RateLimitService.addQuota()` (line 115-126): 在 `trySetRate()` 前先呼叫 `delete()` 刪除舊限流器
 - 修改 `RateLimitService.addMonthlyQuota()` (line 146-157): 同樣修正
 - 修改測試案例 `shouldUsePersistentKeyWithoutDate()` (line 218-240): 改用直接檢查 Key 存在性 + Pattern 搜尋驗證無日期後綴
 
 **第二次執行結果**: ✅ 全部通過
+
+---
+
+**第二次優化 (2026-02-05)**:
+
+**問題發現**:
+- `addQuota()` 和 `addMonthlyQuota()` 使用 `availablePermits()` (剩餘令牌數) 作為基礎計算新額度
+- 這會導致已消耗的令牌無法計入新額度（例如：設定 5 個，用掉 2 個剩 3 個，增加 10 個應該變成 15 個，但舊邏輯會變成 13 個）
+
+**優化措施**:
+- 改用 `rateLimiter.getConfig().getRate()` 取得已設定的容量（配置的速率），而非剩餘令牌數
+- 更新邏輯：`newTotal = currentConfiguredRate + amount`
+- 若 RateLimiter 不存在，則使用系統預設值作為 fallback
+- 更新日誌訊息：顯示舊速率與新速率，更清楚追蹤變更
+
+**測試驗證**:
+- 單元測試: 9/9 通過 ✅ (新增 3 個測試案例驗證 `getConfig().getRate()` 邏輯)
+- 整合測試: 7/7 通過 ✅
+
+**第三次執行結果**: ✅ 全部通過

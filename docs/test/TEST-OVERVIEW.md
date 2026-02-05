@@ -31,7 +31,7 @@
 | `Constant` (Enums) | ✅ 完成 | 100% | EnumUtil verified |
 | `TicketMonitorExecutor`| ✅ 完成 | 100% | Logic verified |
 | `ReminderExecutor` | ✅ 完成 | 100% | Logic verified |
-| `RateLimitService` | ✅ 完成 | 100% | Unit tests (6) + Integration tests (7) |
+| `RateLimitService` | ✅ 完成 | 100% | Unit tests (9) + Integration tests (7) |
 | `SystemConfigService` | ✅ 完成 | 100% | Cache logic verified |
 | `TdxService` | ✅ 完成 | 80% | API calling verified (Mock) |
 | `AiService` | ✅ 完成 | 80% | Chat flow verified (Mock) |
@@ -182,7 +182,7 @@
 ### 總覽
 - **單元測試**: 13 個測試類別
 - **整合測試**: 5 個測試類別
-- **總測試案例數**: 110+ 個
+- **總測試案例數**: 113+ 個
 - **測試通過率**: 100% ✅
 
 ### 測試覆蓋率 (估計)

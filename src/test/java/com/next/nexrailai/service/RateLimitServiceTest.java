@@ -6,6 +6,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RRateLimiter;
+import org.redisson.api.RateLimiterConfig;
 import org.redisson.api.RateIntervalUnit;
 import org.redisson.api.RateType;
 import org.redisson.api.RedissonClient;
@@ -23,6 +24,8 @@ class RateLimitServiceTest {
     private SystemConfigService systemConfigService;
     @Mock
     private RRateLimiter rateLimiter;
+    @Mock
+    private RateLimiterConfig rateLimiterConfig;
 
     @InjectMocks
     private RateLimitService rateLimitService;
@@ -118,5 +121,52 @@ class RateLimitServiceTest {
         // Assert
         verify(rateLimiter).delete();
         verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(20L), eq(1L), eq(RateIntervalUnit.DAYS));
+    }
+
+    @Test
+    void addQuota_ShouldUseConfiguredRate_WhenLimiterExists() {
+        // Arrange
+        when(redissonClient.getRateLimiter(anyString())).thenReturn(rateLimiter);
+        when(rateLimiter.isExists()).thenReturn(true);
+        when(rateLimiter.getConfig()).thenReturn(rateLimiterConfig);
+        when(rateLimiterConfig.getRate()).thenReturn(10L); // 目前設定的容量是 10
+        
+        // Act
+        rateLimitService.addQuota("U123", 5); // 增加 5，新容量應為 15
+
+        // Assert
+        verify(rateLimiter).delete();
+        verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(15L), eq(1L), eq(RateIntervalUnit.DAYS));
+    }
+
+    @Test
+    void addQuota_ShouldUseDefaultRate_WhenLimiterNotExists() {
+        // Arrange
+        when(redissonClient.getRateLimiter(anyString())).thenReturn(rateLimiter);
+        when(rateLimiter.isExists()).thenReturn(false);
+        when(systemConfigService.getInt("daily_message_limit")).thenReturn(10);
+        
+        // Act
+        rateLimitService.addQuota("U123", 5); // 預設 10 + 增加 5 = 15
+
+        // Assert
+        verify(rateLimiter).delete();
+        verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(15L), eq(1L), eq(RateIntervalUnit.DAYS));
+    }
+
+    @Test
+    void addMonthlyQuota_ShouldUseConfiguredRate_WhenLimiterExists() {
+        // Arrange
+        when(redissonClient.getRateLimiter(anyString())).thenReturn(rateLimiter);
+        when(rateLimiter.isExists()).thenReturn(true);
+        when(rateLimiter.getConfig()).thenReturn(rateLimiterConfig);
+        when(rateLimiterConfig.getRate()).thenReturn(100L); // 目前設定的容量是 100
+        
+        // Act
+        rateLimitService.addMonthlyQuota("U123", 50); // 增加 50，新容量應為 150
+
+        // Assert
+        verify(rateLimiter).delete();
+        verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(150L), eq(32L), eq(RateIntervalUnit.DAYS));
     }
 }

@@ -110,20 +110,30 @@ public class RateLimitService {
     
     /**
      * 增加每日額度
-     * RRateLimiter 不支援動態增加令牌，此方法會刪除舊限流器並重新設定速率
+     * 使用 RRateLimiter.getConfig().getRate() 取得已設定的容量（非剩餘令牌數）
+     * 避免使用 availablePermits() 導致已消耗令牌無法計入新額度
      */
     public void addQuota(String userId, int amount) {
         String key = getKey(userId);
         RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
         
-        int currentRemaining = (int) rateLimiter.availablePermits();
-        int newTotal = currentRemaining + amount;
+        // 取得目前設定的速率（容量），而非剩餘令牌數
+        long currentConfiguredRate = 0;
+        if (rateLimiter.isExists() && rateLimiter.getConfig() != null) {
+            currentConfiguredRate = rateLimiter.getConfig().getRate();
+        } else {
+            // 若不存在，使用系統預設值
+            currentConfiguredRate = systemConfigService.getInt("daily_message_limit");
+        }
+        
+        int newTotal = (int) currentConfiguredRate + amount;
         
         // 刪除舊的限流器並重新建立（因為 trySetRate 對已存在的限流器無效）
         rateLimiter.delete();
         rateLimiter.trySetRate(RateType.OVERALL, newTotal, 1, RateIntervalUnit.DAYS);
         
-        log.info(">>>> [Rate Limit] User {} added {} daily quota. New total: {}", userId, amount, newTotal);
+        log.info(">>>> [Rate Limit] User {} added {} to configured rate. Old rate: {}, New rate: {}", 
+                userId, amount, currentConfiguredRate, newTotal);
     }
 
     /**
@@ -142,20 +152,30 @@ public class RateLimitService {
 
     /**
      * 增加每月額度
-     * RRateLimiter 不支援動態增加令牌，此方法會刪除舊限流器並重新設定速率
+     * 使用 RRateLimiter.getConfig().getRate() 取得已設定的容量（非剩餘令牌數）
+     * 避免使用 availablePermits() 導致已消耗令牌無法計入新額度
      */
     public void addMonthlyQuota(String userId, int amount) {
         String key = getMonthlyKey(userId);
         RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
         
-        int currentRemaining = (int) rateLimiter.availablePermits();
-        int newTotal = currentRemaining + amount;
+        // 取得目前設定的速率（容量），而非剩餘令牌數
+        long currentConfiguredRate = 0;
+        if (rateLimiter.isExists() && rateLimiter.getConfig() != null) {
+            currentConfiguredRate = rateLimiter.getConfig().getRate();
+        } else {
+            // 若不存在，使用系統預設值
+            currentConfiguredRate = systemConfigService.getInt("monthly_broadcast_limit");
+        }
+        
+        int newTotal = (int) currentConfiguredRate + amount;
         
         // 刪除舊的限流器並重新建立（因為 trySetRate 對已存在的限流器無效）
         rateLimiter.delete();
         rateLimiter.trySetRate(RateType.OVERALL, newTotal, 32, RateIntervalUnit.DAYS);
         
-        log.info(">>>> [Rate Limit] User {} added {} monthly quota. New total: {}", userId, amount, newTotal);
+        log.info(">>>> [Rate Limit] User {} added {} to configured rate. Old rate: {}, New rate: {}", 
+                userId, amount, currentConfiguredRate, newTotal);
     }
 
     /**
