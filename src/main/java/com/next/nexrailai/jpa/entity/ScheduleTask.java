@@ -42,7 +42,7 @@ public class ScheduleTask {
 
     @Column(name = "retry_count")
     @Builder.Default
-    private int retryCount = 0;
+    private Integer retryCount = 0;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
