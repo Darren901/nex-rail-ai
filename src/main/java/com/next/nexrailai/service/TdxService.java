@@ -15,6 +15,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
@@ -275,10 +277,15 @@ public class TdxService {
 
         log.info("Token 已過期或不存在，準備向 TDX 申請新 Token...");
 
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "client_credentials");
+        formData.add("client_id", clientId);
+        formData.add("client_secret", clientSecret);
+
         TdxTokenResponse response = restClient.post()
                 .uri("/auth/realms/TDXConnect/protocol/openid-connect/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body("grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret)
+                .body(formData)
                 .retrieve()
                 .body(TdxTokenResponse.class);
 

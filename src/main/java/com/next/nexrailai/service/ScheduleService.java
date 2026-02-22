@@ -173,7 +173,8 @@ public class ScheduleService {
      * 處理任務失敗重試邏輯
      */
     private void handleTaskFailure(ScheduleTask task) {
-        int retryCount = task.getRetryCount() + 1;
+        int currentRetryCount = task.getRetryCount() == null ? 0 : task.getRetryCount();
+        int retryCount = currentRetryCount + 1;
         task.setRetryCount(retryCount);
 
         if (retryCount >= 3) {
