@@ -89,9 +89,10 @@
     </div>
     <h1>正在為您開啟 T-EX 行動購票...</h1>
     <div class="spinner"></div>
-    <p>如果沒有自動跳轉，請點擊下方連結</p>
+    <p th:if="${targetUrl != ''}">如果沒有自動跳轉，請點擊下方連結</p>
+    <p th:if="${invalidUrl}" style="color:#ffd7d7;">連結格式不正確或不在允許清單中，已阻擋跳轉。</p>
 
-    <div class="manual-link">
+    <div class="manual-link" th:if="${targetUrl != ''}">
         <a th:href="${targetUrl}" id="manualLink">點此手動開啟</a>
     </div>
 </div>
