@@ -1,6 +1,7 @@
 package com.next.nexrailai.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,6 +20,16 @@ public class RedirectController {
 
     @Value("${app.redirect.allowed-hosts:irs.thsrc.com.tw,www.thsrc.com.tw,tdx.transportdata.tw}")
     private String allowedHosts;
+    private volatile Set<String> allowedHostsCache = Set.of();
+
+    @PostConstruct
+    void initAllowedHostsCache() {
+        this.allowedHostsCache = Arrays.stream(allowedHosts.split(","))
+                .map(String::trim)
+                .filter(host -> !host.isEmpty())
+                .map(host -> host.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+    }
 
     /**
      * 中轉頁面：接收網址並立即重定向，用於繞過 LINE In-App Browser 限制
@@ -54,17 +65,9 @@ public class RedirectController {
                 return false;
             }
 
-            return parseAllowedHosts().contains(host.toLowerCase(Locale.ROOT));
+            return allowedHostsCache.contains(host.toLowerCase(Locale.ROOT));
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private Set<String> parseAllowedHosts() {
-        return Arrays.stream(allowedHosts.split(","))
-                .map(String::trim)
-                .filter(host -> !host.isEmpty())
-                .map(host -> host.toLowerCase(Locale.ROOT))
-                .collect(Collectors.toSet());
     }
 }
