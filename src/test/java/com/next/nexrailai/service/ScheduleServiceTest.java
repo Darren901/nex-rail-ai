@@ -149,4 +149,34 @@ class ScheduleServiceTest {
         assertEquals(3, savedTask.getRetryCount());
         assertEquals(ScheduleTask.TaskStatus.FAILED, savedTask.getStatus());
     }
+
+    @Test
+    void processScheduledTasks_ShouldRetryWhenRetryCountIsNull() {
+        // Arrange
+        LocalDateTime originalTime = LocalDateTime.now();
+        ScheduleTask task = ScheduleTask.builder()
+                .id(6L)
+                .taskType(ScheduleTask.TaskType.REMINDER)
+                .retryCount(null)
+                .triggerTime(originalTime)
+                .build();
+
+        when(repository.findByStatusAndTriggerTimeBefore(any(), any())).thenReturn(List.of(task));
+
+        ScheduleTaskExecutor executor = mock(ScheduleTaskExecutor.class);
+        when(factory.getExecutor(any())).thenReturn(executor);
+        doThrow(new RuntimeException("Execution Failed")).when(executor).execute(any());
+
+        // Act
+        scheduleService.processScheduledTasks();
+
+        // Assert
+        ArgumentCaptor<ScheduleTask> taskCaptor = ArgumentCaptor.forClass(ScheduleTask.class);
+        verify(repository).save(taskCaptor.capture());
+
+        ScheduleTask savedTask = taskCaptor.getValue();
+        assertEquals(1, savedTask.getRetryCount());
+        long minutesDiff = ChronoUnit.MINUTES.between(originalTime, savedTask.getTriggerTime());
+        assertTrue(minutesDiff >= 4 && minutesDiff <= 6, "Null retryCount should be treated as first retry");
+    }
 }

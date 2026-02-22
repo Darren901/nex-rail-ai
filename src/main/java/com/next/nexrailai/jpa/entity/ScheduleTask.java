@@ -52,6 +52,9 @@ public class ScheduleTask {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+        if (this.retryCount == null) {
+            this.retryCount = 0;
+        }
         if (this.status == null) {
             this.status = TaskStatus.PENDING;
         }
