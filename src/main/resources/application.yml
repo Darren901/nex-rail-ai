@@ -67,7 +67,7 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   redirect:
-    allowed-hosts: ${APP_REDIRECT_ALLOWED_HOSTS:irs.thsrc.com.tw,www.thsrc.com.tw,tdx.transportdata.tw}
+    allowed-hosts: ${APP_REDIRECT_ALLOWED_HOSTS:irs.thsrc.com.tw,www.thsrc.com.tw,tdx.transportdata.tw,maas.transportdata.tw}
 
 management:
   endpoints:
