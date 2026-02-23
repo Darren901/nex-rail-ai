@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RedirectController {
 
-    @Value("${app.redirect.allowed-hosts")
+    @Value("${app.redirect.allowed-hosts}")
     private String allowedHosts;
     private volatile Set<String> allowedHostsCache = Set.of();
 
