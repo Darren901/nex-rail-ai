@@ -28,6 +28,19 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: update
+  ai:
+    chat:
+      client:
+        observations:
+          # 關閉全文 Log，避免記憶體積壓
+          log-completion: false
+
+server:
+  tomcat:
+    threads:
+      # 限制 Tomcat 執行緒池，適配低併發場景
+      max: 20
+      min-spare: 5
 
 # Application Config (Prod)
 app:
