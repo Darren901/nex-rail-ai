@@ -1,9 +1,13 @@
 package com.next.nexrailai.controller.admin;
 
+import com.linecorp.bot.messaging.model.TextMessage;
+import com.next.nexrailai.config.StockProperties;
 import com.next.nexrailai.dto.StockPositionRequest;
 import com.next.nexrailai.dto.StockPositionResponse;
 import com.next.nexrailai.jpa.entity.StockPosition;
 import com.next.nexrailai.jpa.service.StockPositionService;
+import com.next.nexrailai.service.LineMessageService;
+import com.next.nexrailai.service.StockReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +31,9 @@ import java.util.List;
 public class StockAdminController {
 
     private final StockPositionService stockPositionService;
+    private final StockReportService stockReportService;
+    private final LineMessageService lineMessageService;
+    private final StockProperties stockProperties;
 
     @GetMapping("/positions")
     public ResponseEntity<List<StockPositionResponse>> getAllPositions() {
@@ -77,5 +84,16 @@ public class StockAdminController {
                 return ResponseEntity.noContent().<Void>build();
             })
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/report/trigger")
+    public ResponseEntity<String> triggerReport() {
+        log.info(">>>> [Stock Admin] 手動觸發每日報告");
+        String report = stockReportService.buildDailyReport();
+        lineMessageService.pushMessage(
+            stockProperties.ownerLineUserId(),
+            new TextMessage(report)
+        );
+        return ResponseEntity.ok("報告已發送");
     }
 }
