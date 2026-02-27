@@ -15,6 +15,7 @@ public class StockApiService {
     private final StockProperties stockProperties;
     private final RestClient alphaVantageClient;
     private final RestClient finnhubClient;
+    private final RestClient cnnClient;
 
     public StockApiService(StockProperties stockProperties) {
         this.stockProperties = stockProperties;
@@ -23,6 +24,9 @@ public class StockApiService {
             .build();
         this.finnhubClient = RestClient.builder()
             .baseUrl(stockProperties.finnhub().baseUrl())
+            .build();
+        this.cnnClient = RestClient.builder()
+            .baseUrl("https://production.dataviz.cnn.io")
             .build();
     }
 
@@ -85,10 +89,6 @@ public class StockApiService {
      */
     public String getFearAndGreedIndex() {
         try {
-            RestClient cnnClient = RestClient.builder()
-                .baseUrl("https://production.dataviz.cnn.io")
-                .build();
-
             Map response = cnnClient.get()
                 .uri("/index/fearandgreed/graphdata")
                 .retrieve()
