@@ -1,6 +1,10 @@
 package com.next.nexrailai.service;
 
-import com.linecorp.bot.messaging.model.*;
+import com.linecorp.bot.messaging.model.Emoji;
+import com.linecorp.bot.messaging.model.Message;
+import com.linecorp.bot.messaging.model.TextMessage;
+import com.linecorp.bot.messaging.model.UserProfileResponse;
+import com.next.nexrailai.config.StockProperties;
 import com.next.nexrailai.context.ThsrContextHolder;
 import com.next.nexrailai.jpa.entity.ScheduleTask;
 import com.next.nexrailai.jpa.entity.UserMemory;
@@ -30,6 +34,9 @@ public class LineService {
     private final ScheduleService scheduleService;
     private final UserMemoryService userMemoryService;
     private final RateLimitService rateLimitService;
+    private final StockProperties stockProperties;
+    private final StockReportService stockReportService;
+    private final StockAiService stockAiService;
 
     public UserProfileResponse getUserProfile(String userId) {
         return lineMessageService.getUserProfile(userId);
@@ -79,6 +86,13 @@ public class LineService {
 
     private void handleCommand(String userId, String command, String replyToken) {
         log.info(">>>> [LINE Service] 處理指令: {} for User: {}", command, userId);
+
+        // /stock 指令：owner-only 攔截
+        if (command.startsWith("/stock")) {
+            handleStockCommand(userId, command, replyToken);
+            return;
+        }
+
         Message replyMessage;
 
         switch (command) {
@@ -98,6 +112,26 @@ public class LineService {
         }
 
         reply(replyToken, replyMessage);
+    }
+
+    private void handleStockCommand(String userId, String command, String replyToken) {
+        if (!userId.equals(stockProperties.ownerLineUserId())) {
+            log.debug(">>>> [LINE Service] 非 owner 使用者嘗試使用 /stock 指令，靜默忽略: {}", userId);
+            return;
+        }
+
+        String query = command.length() > 6 ? command.substring(6).trim() : "";
+
+        showLoading(userId);
+
+        if (query.isEmpty()) {
+            String report = stockReportService.buildDailyReport();
+            reply(replyToken, new TextMessage(report));
+            return;
+        }
+
+        String response = stockAiService.chat(userId, query);
+        reply(replyToken, new TextMessage(response));
     }
 
     public void handlePostback(String userId, String data, String replyToken) {
