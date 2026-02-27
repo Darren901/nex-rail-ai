@@ -3,7 +3,7 @@ package com.next.nexrailai.controller.admin;
 import com.next.nexrailai.dto.StockPositionRequest;
 import com.next.nexrailai.dto.StockPositionResponse;
 import com.next.nexrailai.jpa.entity.StockPosition;
-import com.next.nexrailai.jpa.repository.StockPositionRepository;
+import com.next.nexrailai.jpa.service.StockPositionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,11 @@ import java.util.List;
 @Slf4j
 public class StockAdminController {
 
-    private final StockPositionRepository stockPositionRepository;
+    private final StockPositionService stockPositionService;
 
     @GetMapping("/positions")
     public ResponseEntity<List<StockPositionResponse>> getAllPositions() {
-        List<StockPositionResponse> positions = stockPositionRepository.findAllByOrderBySymbolAsc()
+        List<StockPositionResponse> positions = stockPositionService.findAll()
             .stream()
             .map(StockPositionResponse::from)
             .toList();
@@ -40,7 +40,7 @@ public class StockAdminController {
     @PostMapping("/positions")
     public ResponseEntity<StockPositionResponse> createPosition(@Valid @RequestBody StockPositionRequest request) {
         log.info(">>>> [Stock Admin] 新增持倉: {}", request.symbol());
-        if (stockPositionRepository.existsBySymbol(request.symbol())) {
+        if (stockPositionService.existsBySymbol(request.symbol())) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
         StockPosition position = StockPosition.builder()
@@ -49,7 +49,8 @@ public class StockAdminController {
             .costPrice(request.costPrice())
             .note(request.note())
             .build();
-        return ResponseEntity.ok(StockPositionResponse.from(stockPositionRepository.save(position)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(StockPositionResponse.from(stockPositionService.save(position)));
     }
 
     @PutMapping("/positions/{symbol}")
@@ -57,12 +58,12 @@ public class StockAdminController {
             @PathVariable String symbol,
             @Valid @RequestBody StockPositionRequest request) {
         log.info(">>>> [Stock Admin] 更新持倉: {}", symbol);
-        return stockPositionRepository.findBySymbol(symbol.toUpperCase())
+        return stockPositionService.findBySymbol(symbol.toUpperCase())
             .map(position -> {
                 position.setShares(request.shares());
                 position.setCostPrice(request.costPrice());
                 position.setNote(request.note());
-                return ResponseEntity.ok(StockPositionResponse.from(stockPositionRepository.save(position)));
+                return ResponseEntity.ok(StockPositionResponse.from(stockPositionService.save(position)));
             })
             .orElse(ResponseEntity.notFound().build());
     }
@@ -70,9 +71,9 @@ public class StockAdminController {
     @DeleteMapping("/positions/{symbol}")
     public ResponseEntity<Void> deletePosition(@PathVariable String symbol) {
         log.info(">>>> [Stock Admin] 刪除持倉: {}", symbol);
-        return stockPositionRepository.findBySymbol(symbol.toUpperCase())
+        return stockPositionService.findBySymbol(symbol.toUpperCase())
             .map(position -> {
-                stockPositionRepository.delete(position);
+                stockPositionService.delete(position);
                 return ResponseEntity.noContent().<Void>build();
             })
             .orElse(ResponseEntity.notFound().build());
