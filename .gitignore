@@ -46,3 +46,5 @@ redis-data/
 gha-creds-*.json
 Admin-API-Spec.md
 logs
+.claude/settings.local.json
+.claude/.DS_Store
