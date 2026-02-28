@@ -268,6 +268,10 @@ public class StockApiService {
      * 格式化漲跌幅文字（純計算，無網路呼叫）
      */
     public String formatPriceChange(double costPrice, double currentPrice) {
+        if (costPrice <= 0) {
+           return "N/A";
+        }
+
         double changePercent = (currentPrice - costPrice) / costPrice * 100;
         String sign = changePercent >= 0 ? "+" : "";
         return String.format("%s%.2f%%", sign, changePercent);

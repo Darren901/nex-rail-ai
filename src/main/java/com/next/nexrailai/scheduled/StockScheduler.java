@@ -20,7 +20,7 @@ public class StockScheduler {
     private final StockProperties stockProperties;
 
     // 每日 08:00 台灣時間（週一至週五）
-    @Scheduled(cron = "0 0 8 * * MON-FRI", zone = "Asia/Taipei")
+    @Scheduled(cron = "0 0 8 * * TUE-SAT", zone = "Asia/Taipei")
     @DistributedLock(key = "stock-daily-report")
     public void sendDailyReport() {
         log.info(">>>> [Stock Scheduler] 開始產生每日美股報告");
