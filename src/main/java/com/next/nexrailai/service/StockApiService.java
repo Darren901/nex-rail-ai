@@ -5,8 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -106,6 +108,41 @@ public class StockApiService {
         } catch (Exception e) {
             log.error(">>>> [Stock API] 取得恐慌指數失敗: {}", e.getMessage());
             return "N/A";
+        }
+    }
+
+    /**
+     * 取得個股公司相關新聞（Finnhub company-news，最近 7 天最多 3 則）
+     * @param symbol 股票代碼，例如 AAPL
+     * @return 新聞摘要字串（多則合併），失敗時回傳預設訊息
+     */
+    public String getCompanyNews(String symbol) {
+        try {
+            LocalDate today = LocalDate.now();
+            LocalDate weekAgo = today.minusDays(7);
+
+            List<Map> response = finnhubClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/company-news")
+                    .queryParam("symbol", symbol)
+                    .queryParam("from", weekAgo.toString())
+                    .queryParam("to", today.toString())
+                    .queryParam("token", stockProperties.finnhub().apiKey())
+                    .build())
+                .retrieve()
+                .body(List.class);
+
+            if (response == null || response.isEmpty()) {
+                return symbol + " 近期無相關新聞";
+            }
+
+            return response.stream()
+                .limit(3)
+                .map(news -> "• " + news.get("headline").toString())
+                .collect(Collectors.joining("\n"));
+        } catch (Exception e) {
+            log.error(">>>> [Stock API] 取得 {} 個股新聞失敗: {}", symbol, e.getMessage());
+            return symbol + " 近期無法取得新聞資料";
         }
     }
 

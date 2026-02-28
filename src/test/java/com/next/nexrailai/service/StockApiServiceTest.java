@@ -41,4 +41,12 @@ class StockApiServiceTest {
         assertThat(result).startsWith("+");
         assertThat(result).contains("0.00%");
     }
+
+    @Test
+    void getCompanyNews_shouldReturnNonNullString_andNotThrow() {
+        // 呼叫會因無效 API key 而失敗，但方法本身不應拋出例外（防禦性設計）
+        String result = stockApiService.getCompanyNews("AAPL");
+        assertThat(result).isNotNull();
+        assertThat(result).isNotEmpty();
+    }
 }
