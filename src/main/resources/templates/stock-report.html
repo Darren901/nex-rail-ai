@@ -441,7 +441,7 @@ if (el) {
     // 2. Fear & Greed callout
     el.querySelectorAll('p').forEach(p => {
       const txt = p.textContent;
-      const match = txt.match(/恐慌貪婪指數.*?([極度恐慌|恐慌|中性|貪婪|極度貪婪]+)\s*\((\d+)\)/);
+      const match = txt.match(/恐慌貪婪指數.*?(極度恐慌|恐慌|中性|貪婪|極度貪婪)\s*\((\d+)\)/);
       if (match) {
         const rating = match[1];
         const score  = match[2];
