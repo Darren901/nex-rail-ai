@@ -4,7 +4,7 @@ import com.linecorp.bot.messaging.model.TextMessage;
 import com.next.nexrailai.aspect.DistributedLock;
 import com.next.nexrailai.config.StockProperties;
 import com.next.nexrailai.service.LineMessageService;
-import com.next.nexrailai.service.StockReportService;
+import com.next.nexrailai.service.StockAiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StockScheduler {
 
-    private final StockReportService stockReportService;
+    private final StockAiService stockAiService;
     private final LineMessageService lineMessageService;
     private final StockProperties stockProperties;
 
@@ -25,7 +25,7 @@ public class StockScheduler {
     public void sendDailyReport() {
         log.info(">>>> [Stock Scheduler] 開始產生每日美股報告");
         try {
-            String report = stockReportService.buildDailyReport();
+            String report = stockAiService.generateDailyReport();
             lineMessageService.pushMessage(
                 stockProperties.ownerLineUserId(),
                 new TextMessage(report)

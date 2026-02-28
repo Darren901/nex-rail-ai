@@ -7,7 +7,7 @@ import com.next.nexrailai.dto.StockPositionResponse;
 import com.next.nexrailai.jpa.entity.StockPosition;
 import com.next.nexrailai.jpa.service.StockPositionService;
 import com.next.nexrailai.service.LineMessageService;
-import com.next.nexrailai.service.StockReportService;
+import com.next.nexrailai.service.StockAiService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ import java.util.List;
 public class StockAdminController {
 
     private final StockPositionService stockPositionService;
-    private final StockReportService stockReportService;
+    private final StockAiService stockAiService;
     private final LineMessageService lineMessageService;
     private final StockProperties stockProperties;
 
@@ -89,7 +89,7 @@ public class StockAdminController {
     @PostMapping("/report/trigger")
     public ResponseEntity<String> triggerReport() {
         log.info(">>>> [Stock Admin] 手動觸發每日報告");
-        String report = stockReportService.buildDailyReport();
+        String report = stockAiService.generateDailyReport();
         lineMessageService.pushMessage(
             stockProperties.ownerLineUserId(),
             new TextMessage(report)

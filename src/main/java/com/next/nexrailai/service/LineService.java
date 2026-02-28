@@ -35,7 +35,6 @@ public class LineService {
     private final UserMemoryService userMemoryService;
     private final RateLimitService rateLimitService;
     private final StockProperties stockProperties;
-    private final StockReportService stockReportService;
     private final StockAiService stockAiService;
 
     public UserProfileResponse getUserProfile(String userId) {
@@ -125,7 +124,7 @@ public class LineService {
         showLoading(userId);
 
         if (query.isEmpty()) {
-            String report = stockReportService.buildDailyReport();
+            String report = stockAiService.generateDailyReport();
             reply(replyToken, new TextMessage(report));
             return;
         }
