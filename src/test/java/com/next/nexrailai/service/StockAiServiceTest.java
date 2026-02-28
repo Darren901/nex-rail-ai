@@ -16,14 +16,14 @@ class StockAiServiceTest {
     private ChatClient chatClient;
 
     @Mock
-    private StockApiService stockApiService;
+    private StockTools stockTools;
 
     @InjectMocks
     private StockAiService stockAiService;
 
     @Test
-    void stockAiService_shouldBeCreated_withoutException() {
-        // 基本實例化測試（ChatClient 是複雜的 fluent API，深層 mock 測試另類）
+    void stockAiService_shouldBeInstantiable_withToolsInjected() {
+        // StockAiService 注入 StockTools（不再依賴 StockApiService 直接呼叫）
         assertThat(stockAiService).isNotNull();
     }
 }
