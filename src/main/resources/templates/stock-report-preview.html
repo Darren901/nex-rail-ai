@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美股投資分析報告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Design Tokens ───────────────────────────────────────────── */
+:root {
+  --bg:        #0c0c0d;
+  --surface:   #141416;
+  --surface-2: #1c1c1f;
+  --border:    #282829;
+  --border-hi: #3a3a3d;
+
+  --text-1:    #f0ece4;   /* warm off-white */
+  --text-2:    #a09c94;
+  --text-3:    #5e5b56;
+
+  --gold:      #c8a96a;
+  --gold-dim:  #c8a96a22;
+  --gain:      #3ecf8e;
+  --gain-dim:  #3ecf8e18;
+  --loss:      #f45b69;
+  --loss-dim:  #f45b6918;
+
+  --serif:     'Cormorant Garamond', Georgia, serif;
+  --sans:      'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+
+  --max-w:     760px;
+  --r:         8px;
+}
+
+/* ── Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Grain overlay ───────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.7;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.028;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Page shell ──────────────────────────────────────────────── */
+.page { max-width: var(--max-w); margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+/* ── Masthead ────────────────────────────────────────────────── */
+.masthead {
+  padding: 3.5rem 0 2.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+.masthead-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 1.5rem;
+}
+.masthead-meta .badge {
+  background: var(--gold-dim);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.masthead-title {
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 8vw, 4.2rem);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+  margin-bottom: 1rem;
+}
+.masthead-sub {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+
+/* ── Report body: section headings ──────────────────────────── */
+#report-content h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  font-weight: 600;
+  font-style: italic;
+  color: var(--text-1);
+  line-height: 1.25;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+#report-content h3 {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Paragraphs ──────────────────────────────────────────────── */
+#report-content p {
+  color: var(--text-2);
+  line-height: 1.8;
+  margin-bottom: 0.9rem;
+  font-size: 0.95rem;
+}
+
+/* ── Top-level list: news items ─────────────────────────────── */
+#report-content > ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+#report-content > ul > li {
+  position: relative;
+  padding: 0.7rem 0.9rem 0.7rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-hi);
+  border-radius: var(--r);
+  color: var(--text-2);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+#report-content > ul > li strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+/* ── Stock position cards: nested lists ─────────────────────── */
+#report-content > ul > li.stock-card {
+  border-left: 2px solid var(--border-hi);
+  background: var(--surface);
+  padding: 1rem 1.1rem;
+}
+#report-content > ul > li.stock-card > p {
+  margin: 0 0 0.65rem;
+}
+#report-content > ul > li.stock-card > p > strong,
+#report-content > ul > li.stock-card > strong {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+#report-content > ul > li.stock-card > ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.35rem 1rem;
+}
+#report-content > ul > li.stock-card > ul > li {
+  font-size: 0.82rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+#report-content > ul > li.stock-card > ul > li .val {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+#report-content > ul > li.stock-card .pnl-gain {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gain);
+}
+#report-content > ul > li.stock-card .pnl-loss {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--loss);
+}
+#report-content > ul > li.stock-card.is-gain {
+  border-left-color: var(--gain);
+  background: linear-gradient(90deg, var(--gain-dim) 0%, transparent 60%);
+}
+#report-content > ul > li.stock-card.is-loss {
+  border-left-color: var(--loss);
+  background: linear-gradient(90deg, var(--loss-dim) 0%, transparent 60%);
+}
+
+/* ── HR ──────────────────────────────────────────────────────── */
+#report-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+
+/* ── Blockquote / disclaimer ─────────────────────────────────── */
+#report-content blockquote {
+  border-left: 2px solid var(--gold);
+  padding: 0.6rem 1rem;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  font-style: italic;
+  background: var(--surface);
+  border-radius: 0 var(--r) var(--r) 0;
+  margin: 1rem 0;
+}
+
+/* ── Fear & Greed callout ────────────────────────────────────── */
+.fg-callout {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.1rem 1.25rem;
+  margin: 1.25rem 0;
+}
+.fg-score {
+  font-family: var(--mono);
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--gold);
+  min-width: 3ch;
+}
+.fg-label {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--text-1);
+}
+.fg-desc {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin-top: 0.2rem;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.report-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  line-height: 1.8;
+}
+
+/* ── Expired state ───────────────────────────────────────────── */
+.expired {
+  text-align: center;
+  padding: 5rem 2rem;
+}
+.expired-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.expired h2 {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  color: var(--text-1);
+  margin-bottom: 0.5rem;
+}
+.expired p { color: var(--text-3); font-size: 0.88rem; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 580px) {
+  .masthead { padding: 2.5rem 0 1.75rem; }
+  #report-content h2 { font-size: 1.4rem; }
+  #report-content > ul > li.stock-card > ul {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="masthead-meta">
+      <span id="report-date"></span>
+      <span class="badge">AI 生成 · 僅供參考</span>
+    </div>
+    <h1 class="masthead-title">美股投資<br>分析報告</h1>
+    <p class="masthead-sub">每日持倉摘要 · 市場情緒 · 個股要聞</p>
+  </header>
+
+  <!-- Report body -->
+  <div id="report-content"></div>
+
+  <!-- Footer -->
+  <footer class="report-footer">
+    由 NexRailAI 生成 · Powered by Gemini 2.5 Flash<br>
+    本報告僅供資訊參考，不構成任何投資建議。投資有風險，入市需謹慎。
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+// ── Sample content (replaced by Thymeleaf in production) ──────
+const MARKDOWN = `## 每日美股投資摘要報告
+
+**發布日期：** 今日
+
+### 市場整體情緒與解讀
+根據 CNN 恐慌貪婪指數顯示，當前市場情緒為 **恐慌 (43)**。這表示投資者普遍感到不安，市場可能存在較高的不確定性或擔憂情緒。在恐慌情緒主導下，市場波動性可能增加，投資者應保持謹慎。
+
+### 重要新聞摘要與潛在影響
+*   **私有信貸與 AI 恐慌交易影響股市：** 二月份，私有信貸市場的「蟑螂」現象和人工智慧的「恐慌交易」對股市造成衝擊，顯示市場對特定領域的擔憂。
+*   **川普言論與油市：** 川普關於「有時必須」使用武力的言論，導致油市認為美國襲擊伊朗的可能性很高，這可能對全球能源供應和價格產生影響。
+*   **川普將 Anthropic 列入黑名單：** 川普將 AI 公司 Anthropic 列入黑名單，為 Elon Musk 及其 xAI 開啟了新的機會，這可能改變 AI 產業的競爭格局。
+*   **華納兄弟之爭的真正贏家：** 市場對於華納兄弟之爭的真正贏家有不同的看法，這可能影響媒體娛樂產業的未來發展。
+
+### 各持倉股價與損益概況
+
+*   **GOOG (Google)**
+    *   持股數：4 股
+    *   平均成本：$306.35 USD
+    *   最新收盤價：$311.43 USD
+    *   損益百分比：+1.66%
+    *   備註：Google 長線
+
+*   **NET (Cloudflare)**
+    *   持股數：5 股
+    *   平均成本：$185.05 USD
+    *   最新收盤價：$172.19 USD
+    *   損益百分比：-6.95%
+    *   備註：Cloudflare 長線
+
+*   **NVDA (NVIDIA)**
+    *   持股數：4 股
+    *   平均成本：$175.76 USD
+    *   最新收盤價：$177.19 USD
+    *   損益百分比：+0.81%
+    *   備註：NVIDIA AI 長線
+
+*   **ORCL (Oracle)**
+    *   持股數：4 股
+    *   平均成本：$168.20 USD
+    *   最新收盤價：$145.40 USD
+    *   損益百分比：-13.56%
+    *   備註：Oracle 雲端
+
+*   **TSLA (Tesla)**
+    *   持股數：2 股
+    *   平均成本：$395.46 USD
+    *   最新收盤價：$402.51 USD
+    *   損益百分比：+1.78%
+    *   備註：Tesla 長線
+
+### 各持倉個股近期要聞
+
+*   **GOOG (Google):**
+    *   內部人士支持 Figma，因 AI 信用推動面臨 Gemini 圖像壓力。
+    *   Ormat Technologies (ORA) 推進地熱勘探和鑽探以支持新項目。
+    *   道瓊期貨：川普的 Anthropic 舉動衝擊市場 ETF；不要忘記標普 500 最熱門的股票。
+
+*   **NET (Cloudflare):**
+    *   Beam Therapeutics：潛力巨大，但需要耐心。
+    *   「Claude 剛剛殺死了我們的創業公司」：這位舊金山創始人表示，AI 使她的產品一夜之間過時。
+    *   Palo Alto Networks：有機增長開始正常化，第三季度每股收益未達預期是由於股票稀釋。
+
+*   **NVDA (NVIDIA):**
+    *   Lucid Group 股票會跌到 0 嗎？
+    *   Block 裁員後，這三家公司會是下一個嗎？
+    *   Polymarket 表示比特幣在 6 月前突破 15 萬美元的機率只有 3%——長期投資者應該多認真看待這個數字？
+
+*   **ORCL (Oracle):**
+    *   Paramount 以接近當前股價 20% 的溢價發行 470 億美元股權。
+    *   Nvidia 股票在第四季度財報後是否值得逢低買入，還是為時過早？
+    *   Paramount 華納兄弟勝利的「連鎖反應」。
+
+*   **TSLA (Tesla):**
+    *   Benchmark 在利潤強勁和能源增長勢頭下重申 Tesla (TSLA) 買入評級。
+    *   Rivian 股票便宜得離譜，但現在是買入時機嗎？
+    *   Tesla 股票再次錄得周度虧損。Cybercab 高管退出重要的 Robo-Taxi 部門。
+
+### 整體投資組合評估
+目前市場情緒處於「恐慌」狀態，投資者應保持謹慎。您的投資組合中，GOOG、NVDA 和 TSLA 目前呈現小幅獲利，而 NET 和 ORCL 則有不同程度的虧損。
+
+長線投資者在當前市場環境下，建議持續關注各持股公司的基本面、產業趨勢以及宏觀經濟變化，並根據自身風險承受能力，審慎評估投資策略。
+
+---
+**免責聲明：** 本報告僅供參考，不構成任何投資建議。投資有風險，入市需謹慎。`;
+
+// ── Set today's date ──────────────────────────────────────────
+const now = new Date();
+document.getElementById('report-date').textContent =
+  now.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+// ── Render markdown ───────────────────────────────────────────
+const el = document.getElementById('report-content');
+el.innerHTML = marked.parse(MARKDOWN);
+
+// ── Post-process: enrich the rendered DOM ────────────────────
+(function postProcess() {
+  const root = el;
+
+  // 1. Detect & style stock position cards (nested list items)
+  root.querySelectorAll('ul > li').forEach(li => {
+    // marked.js wraps inline **bold** in a <p> when list item has block content
+    const strong = li.querySelector(':scope > p > strong') || li.querySelector(':scope > strong');
+    const nested = li.querySelector(':scope > ul');
+    if (!strong || !nested) return;
+
+    li.classList.add('stock-card');
+
+    // Determine gain/loss from the nested li items
+    let pnlClass = '';
+    nested.querySelectorAll('li').forEach(detail => {
+      const txt = detail.textContent;
+      if (txt.includes('損益百分比')) {
+        const isGain = txt.includes('+');
+        const isLoss = txt.includes('-') && !txt.includes('備註');
+        pnlClass = isGain ? 'is-gain' : (isLoss ? 'is-loss' : '');
+
+        // Wrap the P&L value in a colored span
+        const colon = txt.indexOf('：');
+        if (colon !== -1) {
+          const label = txt.slice(0, colon + 1);
+          const value = txt.slice(colon + 1).trim();
+          const cls = isGain ? 'pnl-gain' : (isLoss ? 'pnl-loss' : '');
+          detail.innerHTML = `<span style="color:var(--text-3)">${label}</span> <span class="${cls}">${value}</span>`;
+        }
+      } else {
+        // Format label : value
+        const colon = txt.indexOf('：');
+        if (colon !== -1) {
+          const label = txt.slice(0, colon + 1);
+          const value = txt.slice(colon + 1).trim();
+          detail.innerHTML = `<span style="color:var(--text-3)">${label}</span> <span class="val">${value}</span>`;
+        }
+      }
+    });
+
+    if (pnlClass) li.classList.add(pnlClass);
+  });
+
+  // 2. Detect fear & greed sentence, wrap in callout card
+  root.querySelectorAll('p').forEach(p => {
+    const txt = p.textContent;
+    const match = txt.match(/恐慌貪婪指數.*?([極度恐慌|恐慌|中性|貪婪|極度貪婪]+)\s*\((\d+)\)/);
+    if (match) {
+      const rating = match[1];
+      const score  = match[2];
+      const rest   = txt.replace(txt.slice(0, txt.indexOf('根據')), '').trim();
+
+      const card = document.createElement('div');
+      card.className = 'fg-callout';
+      card.innerHTML = `
+        <div class="fg-score">${score}</div>
+        <div>
+          <div class="fg-label">${rating}</div>
+          <div class="fg-desc">CNN 恐慌貪婪指數</div>
+        </div>`;
+
+      p.parentNode.insertBefore(card, p);
+
+      // Shorten original paragraph
+      p.textContent = rest.replace(/根據 CNN 恐慌貪婪指數顯示，當前市場情緒為 \S+ \(\d+\)。/, '').trim();
+      if (!p.textContent) p.remove();
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -124,8 +124,8 @@ public class LineService {
         showLoading(userId);
 
         if (query.isEmpty()) {
-            String report = stockAiService.generateDailyReport();
-            reply(replyToken, new TextMessage(report));
+            String reportUrl = stockAiService.generateAndSaveReport();
+            reply(replyToken, new TextMessage("📊 今日美股投資分析報告已出爐！\n\n點此查看完整分析：\n" + reportUrl));
             return;
         }
 

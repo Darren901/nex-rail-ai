@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         // 放行靜態資源
                         .requestMatchers("/", "/index.html", "/static/**", "/*.ico", "/*.json", "/*.png").permitAll()
+                        // 放行美股報告頁面（LINE 推送的公開連結）
+                        .requestMatchers("/stock/report/**").permitAll()
                         // 其他 API 需要驗證 (例如 /api/admin/**)
                         .anyRequest().authenticated()
                 )

@@ -90,11 +90,11 @@ public class StockAdminController {
     @PostMapping("/report/trigger")
     public ResponseEntity<String> triggerReport() {
         log.info(">>>> [Stock Admin] 手動觸發每日報告");
-        String report = stockAiService.generateDailyReport();
+        String reportUrl = stockAiService.generateAndSaveReport();
         lineMessageService.pushMessage(
             stockProperties.ownerLineUserId(),
-            new TextMessage(report)
+            new TextMessage("📊 今日美股投資分析報告已出爐！\n\n點此查看完整分析：\n" + reportUrl)
         );
-        return ResponseEntity.ok("報告已發送");
+        return ResponseEntity.ok(reportUrl);
     }
 }
