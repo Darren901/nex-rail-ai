@@ -1,5 +1,6 @@
 package com.next.nexrailai.service;
 
+import com.next.nexrailai.component.StockTools;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

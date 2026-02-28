@@ -1,5 +1,6 @@
 package com.next.nexrailai.service;
 
+import com.next.nexrailai.component.StockTools;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;

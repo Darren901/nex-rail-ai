@@ -1,7 +1,8 @@
-package com.next.nexrailai.service;
+package com.next.nexrailai.component;
 
 import com.next.nexrailai.jpa.entity.StockPosition;
 import com.next.nexrailai.jpa.service.StockPositionService;
+import com.next.nexrailai.service.StockApiService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
