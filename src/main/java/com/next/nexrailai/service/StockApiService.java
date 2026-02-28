@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.next.nexrailai.config.StockProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -50,12 +51,15 @@ public class StockApiService {
         this.objectMapper = objectMapper;
         this.alphaVantageClient = RestClient.builder()
             .baseUrl(stockProperties.alphaVantage().baseUrl())
+            .requestFactory(createRequestFactory())
             .build();
         this.finnhubClient = RestClient.builder()
             .baseUrl(stockProperties.finnhub().baseUrl())
+            .requestFactory(createRequestFactory())
             .build();
         this.cnnClient = RestClient.builder()
             .baseUrl("https://production.dataviz.cnn.io")
+            .requestFactory(createRequestFactory())
             .defaultHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
             .defaultHeader("Referer", "https://edition.cnn.com/markets/fear-and-greed")
             .defaultHeader("Accept", "application/json, text/plain, */*")
@@ -109,7 +113,7 @@ public class StockApiService {
             log.warn(">>>> [Stock API] 取得股價被中斷: {}", symbol);
             return -1;
         } catch (Exception e) {
-            log.error(">>>> [Stock API] 取得股價失敗: {} - {}", symbol, e.getMessage());
+            log.error(">>>> [Stock API] 取得股價失敗: {} - {}", symbol, e.getMessage(), e);
             return -1;
         }
     }
@@ -149,7 +153,7 @@ public class StockApiService {
             log.info(">>>> [Stock API] 大盤新聞快取更新");
             return news;
         } catch (Exception e) {
-            log.error(">>>> [Stock API] 取得新聞失敗: {}", e.getMessage());
+            log.error(">>>> [Stock API] 取得新聞失敗: {}", e.getMessage(), e);
             return List.of("• 今日無法取得新聞資料");
         }
     }
@@ -184,7 +188,7 @@ public class StockApiService {
             log.info(">>>> [Stock API] 恐慌貪婪指數快取更新: {}", result);
             return result;
         } catch (Exception e) {
-            log.error(">>>> [Stock API] 取得恐慌指數失敗: {}", e.getMessage());
+            log.error(">>>> [Stock API] 取得恐慌指數失敗: {}", e.getMessage(), e);
             return "N/A";
         }
     }
@@ -255,7 +259,7 @@ public class StockApiService {
             log.info(">>>> [Stock API] 個股新聞快取更新: {}", symbol);
             return result;
         } catch (Exception e) {
-            log.error(">>>> [Stock API] 取得 {} 個股新聞失敗: {}", symbol, e.getMessage());
+            log.error(">>>> [Stock API] 取得 {} 個股新聞失敗: {}", symbol, e.getMessage(), e);
             return symbol + " 近期無法取得新聞資料";
         }
     }
@@ -267,6 +271,13 @@ public class StockApiService {
         double changePercent = (currentPrice - costPrice) / costPrice * 100;
         String sign = changePercent >= 0 ? "+" : "";
         return String.format("%s%.2f%%", sign, changePercent);
+    }
+
+    private static SimpleClientHttpRequestFactory createRequestFactory() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(10));
+        return factory;
     }
 
     private String translateRating(String rating) {

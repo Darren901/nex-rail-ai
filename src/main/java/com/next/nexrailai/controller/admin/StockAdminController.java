@@ -46,12 +46,13 @@ public class StockAdminController {
 
     @PostMapping("/positions")
     public ResponseEntity<StockPositionResponse> createPosition(@Valid @RequestBody StockPositionRequest request) {
-        log.info(">>>> [Stock Admin] 新增持倉: {}", request.symbol());
-        if (stockPositionService.existsBySymbol(request.symbol())) {
+        String normalizedSymbol = request.symbol().trim().toUpperCase();
+        log.info(">>>> [Stock Admin] 新增持倉: {}", normalizedSymbol);
+        if (stockPositionService.existsBySymbol(normalizedSymbol)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
         StockPosition position = StockPosition.builder()
-            .symbol(request.symbol().toUpperCase())
+            .symbol(normalizedSymbol)
             .shares(request.shares())
             .costPrice(request.costPrice())
             .note(request.note())
