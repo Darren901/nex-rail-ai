@@ -5,7 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -14,6 +19,13 @@ public class StockAiService {
 
     private final ChatClient chatClient;
     private final StockTools stockTools;
+    private final StringRedisTemplate redisTemplate;
+
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
+    private static final String REPORT_KEY_PREFIX = "stock:daily-report:";
+    private static final Duration REPORT_TTL = Duration.ofHours(24);
 
     // 股票 AI 對話使用獨立的 conversationId 前綴，不混用高鐵的 ChatMemory
     private static final String CONVERSATION_PREFIX = "stock-";
@@ -84,6 +96,18 @@ public class StockAiService {
             log.error(">>>> [Stock AI] 產生每日報告失敗", e);
             return "抱歉，今日無法產生美股報告，請稍後再試或呼叫後台 API 手動觸發。";
         }
+    }
+
+    /**
+     * 產生報告、存入 Redis，回傳可公開瀏覽的 URL（供 Scheduler、LINE、Admin 推送連結用）
+     */
+    public String generateAndSaveReport() {
+        String markdown = generateDailyReport();
+        String reportId = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(REPORT_KEY_PREFIX + reportId, markdown, REPORT_TTL);
+        String url = appBaseUrl + "/stock/report/" + reportId;
+        log.info(">>>> [Stock AI] 報告已儲存，URL: {}", url);
+        return url;
     }
 
     /**

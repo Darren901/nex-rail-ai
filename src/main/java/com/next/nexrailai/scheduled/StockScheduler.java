@@ -25,12 +25,12 @@ public class StockScheduler {
     public void sendDailyReport() {
         log.info(">>>> [Stock Scheduler] 開始產生每日美股報告");
         try {
-            String report = stockAiService.generateDailyReport();
+            String reportUrl = stockAiService.generateAndSaveReport();
             lineMessageService.pushMessage(
                 stockProperties.ownerLineUserId(),
-                new TextMessage(report)
+                new TextMessage("📊 今日美股投資分析報告已出爐！\n\n點此查看完整分析：\n" + reportUrl)
             );
-            log.info(">>>> [Stock Scheduler] 每日美股報告已發送");
+            log.info(">>>> [Stock Scheduler] 每日美股報告已發送: {}", reportUrl);
         } catch (Exception e) {
             log.error(">>>> [Stock Scheduler] 發送每日報告失敗", e);
         }
