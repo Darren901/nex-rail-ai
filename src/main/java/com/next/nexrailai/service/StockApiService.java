@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,6 +19,10 @@ public class StockApiService {
     private final RestClient alphaVantageClient;
     private final RestClient finnhubClient;
     private final RestClient cnnClient;
+
+    // Alpha Vantage 免費版限制：1 request/second
+    private static final long ALPHA_VANTAGE_MIN_INTERVAL_MS = 1200;
+    private final AtomicLong lastAlphaVantageCallMs = new AtomicLong(0);
 
     public StockApiService(StockProperties stockProperties) {
         this.stockProperties = stockProperties;
@@ -41,6 +46,13 @@ public class StockApiService {
      */
     public double getStockPrice(String symbol) {
         try {
+            // Rate limiting：確保兩次呼叫間距至少 1.2 秒
+            long elapsed = System.currentTimeMillis() - lastAlphaVantageCallMs.get();
+            if (elapsed < ALPHA_VANTAGE_MIN_INTERVAL_MS) {
+                Thread.sleep(ALPHA_VANTAGE_MIN_INTERVAL_MS - elapsed);
+            }
+            lastAlphaVantageCallMs.set(System.currentTimeMillis());
+
             Map response = alphaVantageClient.get()
                 .uri(uriBuilder -> uriBuilder
                     .path("/query")
@@ -53,9 +65,16 @@ public class StockApiService {
 
             if (response == null) return -1;
             Map quote = (Map) response.get("Global Quote");
-            if (quote == null || quote.isEmpty()) return -1;
+            if (quote == null || quote.isEmpty()) {
+                log.warn(">>>> [Stock API] {} 無法取得報價，API 回應: {}", symbol, response);
+                return -1;
+            }
 
             return Double.parseDouble(quote.get("05. price").toString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn(">>>> [Stock API] 取得股價被中斷: {}", symbol);
+            return -1;
         } catch (Exception e) {
             log.error(">>>> [Stock API] 取得股價失敗: {} - {}", symbol, e.getMessage());
             return -1;
